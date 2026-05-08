@@ -1,0 +1,82 @@
+### IntelliJ IDEA ###
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+.kotlin
+
+/.idea/*
+!/.idea/codeStyles/
+!/.idea/inspectionProfiles/
+!/.idea/runConfigurations/
+!/.idea/misc.xml
+!/.idea/modules.xml
+# keep workspace and per-user files ignored
+/.idea/workspace.xml
+/.idea/tasks.xml
+/.idea/usage.statistics.xml
+/.idea/dictionaries/
+/.idea/shelf/
+# If you use Maven/Gradle, you may want to ignore .iml files:
+# *.iml
+
+### Java build outputs ###
+/target/
+/build/
+/**/target/
+/**/build/
+/out/                # IDE output (already present but kept for completeness)
+.gradle/             # Gradle cache
+
+### Compiled class files ###
+*.class
+
+### Test & coverage ###
+/test-output/
+/build/test-results/
+/target/surefire-reports/
+jacoco.exec
+coverage/
+
+### Logs and crash files ###
+*.log
+hs_err_pid*
+
+### Local Maven repo (uncommon to be inside project, but safe to ignore) ###
+/.mvn/repository/
+/.m2/
+
+### Environment / secrets / keystores ###
+.env
+.env.*
+application-*.properties
+*.jks
+*.keystore
+*.p12
+secrets/
+private/
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+Thumbs.db
