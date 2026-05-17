@@ -1,5 +1,6 @@
 ### IntelliJ IDEA ###
 out/
+target/
 !**/src/main/**/out/
 !**/src/test/**/out/
 .kotlin
@@ -16,6 +17,8 @@ out/
 /.idea/usage.statistics.xml
 /.idea/dictionaries/
 /.idea/shelf/
+/.idea/gradle.xml
+*.iml
 # If you use Maven/Gradle, you may want to ignore .iml files:
 # *.iml
 
