@@ -6,11 +6,11 @@ public class AlphaBeta {
     // TODO: implement the method
   }
 
-  public void min_value() {
+  public void mini() {
     // TODO: implement the method
   }
 
-  public void max_value() {
+  public void maxi() {
     // TODO: implement the method
   }
 }
