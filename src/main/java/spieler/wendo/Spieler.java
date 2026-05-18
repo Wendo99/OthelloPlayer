@@ -8,11 +8,11 @@ import spieler.ZugException;
 public class Spieler implements OthelloSpieler {
 
   private String name = "Wendo";
-  private static final int DEFAULTDEPTH = 6;
+  private static final int DEFAULT_DEPTH = 6;
   private int depth;
 
   public Spieler() {
-    setDepth(DEFAULTDEPTH);
+    setDepth(DEFAULT_DEPTH);
   }
 
   public Spieler(int depth) {

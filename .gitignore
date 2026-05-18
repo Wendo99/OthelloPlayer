@@ -4,20 +4,23 @@
 .kotlin
 
 /.idea/*
+/.idea/workspace.xml
+/.idea/tasks.xml
+/.idea/dictionaries/
+/.idea/shelf/
+/.idea/usage.statistics.xml
+
+*.iml
+
 !/.idea/codeStyles/
 !/.idea/inspectionProfiles/
 !/.idea/runConfigurations/
 !/.idea/misc.xml
 !/.idea/modules.xml
-
-# keep workspace and per-user files ignored
-/.idea/workspace.xml
-/.idea/tasks.xml
-/.idea/usage.statistics.xml
-/.idea/dictionaries/
-/.idea/shelf/
-/.idea/gradle.xml
-*.iml
+!/.idea/vcs.xml
+!/.idea/compiler.xml
+!/.idea/encodings.xml
+!/.idea/jarRepositories.xml
 
 ### Java build outputs ###
 /target/
@@ -39,7 +42,6 @@ coverage/
 
 ### Logs and crash files ###
 *.log
-!/log/Othello.log
 hs_err_pid*
 
 ### Local Maven repo (uncommon to be inside project, but safe to ignore) ###

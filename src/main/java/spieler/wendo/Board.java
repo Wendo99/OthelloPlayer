@@ -17,7 +17,7 @@ import java.util.List;
  */
 class Board {
 
-  private static final int EMPTY = 0;
+  static final int EMPTY = 0;
   static final int BLACK = 1; // Farbe.SCHWARZ, moves first
   static final int WHITE = 2; // Farbe.WEISS
 
@@ -27,7 +27,7 @@ class Board {
   /**
    * Sentinel column used to represent a "pass" move.
    */
-  private static final int PASS = -1;
+  static final int PASS = -1;
 
   /**
    * The 8 directions as row/col deltas. Order is NW, N, NE, W, E, SW, S, SE (counterclockwise).
@@ -66,6 +66,22 @@ class Board {
   }
 
   /**
+   * Construct a board from a full position. {@code cells} must have length {@code NUMBER_CELLS},
+   * each entry being {@link #EMPTY}, {@link #BLACK} or {@link #WHITE}, indexed {@code row*8+col}.
+   * Narrow, whole-position factory (no per-cell mutation API is exposed); used to set up specific
+   * positions for tests and for reconstructing a position from move history.
+   */
+  static Board fromCells(int[] cells, int sideToMove) {
+    if (cells == null || cells.length != NUMBER_CELLS) {
+      throw new IllegalArgumentException("cells must have length " + NUMBER_CELLS);
+    }
+    if (sideToMove != BLACK && sideToMove != WHITE) {
+      throw new IllegalArgumentException("sideToMove must be BLACK or WHITE");
+    }
+    return new Board(cells, sideToMove);
+  }
+
+  /**
    * Reset to the standard Othello start position; BLACK to move.
    */
   private void reset() {
@@ -83,6 +99,7 @@ class Board {
   Board copy() {
     return new Board(boardCells, sideToMove);
   }
+
 
   /**
    * Convert (row, col) to flat index.
@@ -115,7 +132,7 @@ class Board {
   /**
    * Get the opponents color by determining {@code side} color.
    */
-  private int opponent(int side) {
+  int opponent(int side) {
     return side == BLACK ? WHITE : BLACK;
   }
 
@@ -164,17 +181,18 @@ class Board {
   }
 
   /**
-   * Evaluates if {@code side} has a legal move available. Used to determine if the game is over.
+   * Evaluates whether {@code side} has NO legal move available.
+   * This name matches call sites that check for the absence of moves.
    */
-  private boolean hasLegalMove(int side) {
+  private boolean hasNoLegalMove(int side) {
     for (int row = 0; row < SIZE; row++) {
       for (int col = 0; col < SIZE; col++) {
         if (isLegal(row, col, side)) {
-          return true;
+          return false; // found a legal move
         }
       }
     }
-    return false;
+    return true; // no legal moves found
   }
 
   // ---------------------------------------------------------------------
@@ -229,7 +247,9 @@ class Board {
    * Game over when neither side has a legal move.
    */
   boolean isGameOver() {
-    return !hasLegalMove(BLACK) && !hasLegalMove(WHITE);
+    // Game is over only when both sides have no legal moves.
+    // i.e. neither BLACK nor WHITE has a legal move available.
+    return hasNoLegalMove(BLACK) && hasNoLegalMove(WHITE);
   }
 
   /**
@@ -259,7 +279,7 @@ class Board {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("  0 1 2 3 4 5 6 7\n");
+    sb.append(" 0 1 2 3 4 5 6 7\n");
     for (int row = 0; row < SIZE; row++) {
       sb.append(row).append(' ');
       for (int col = 0; col < SIZE; col++) {
