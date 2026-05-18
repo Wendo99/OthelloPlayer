@@ -1,12 +1,13 @@
 package spieler.wendo;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Internal Othello game state and rules engine.
  *
- * <p>This is OUR private representation, completely independent of the
+ * <p>This is our private player board representation, completely independent of the
  * framework. The arena only ever exchanges single {@link spieler.Zug} objects with us; we
  * reconstruct and maintain the full position here so the search has something to work on.</p>
  *
@@ -14,77 +15,107 @@ import java.util.List;
  * Row 0 / col 0 is the top-left corner, matching the framework's {@code Zug} coordinate
  * convention.</p>
  */
-public class Board {
+class Board {
 
-  public static final int EMPTY = 0;
-  public static final int BLACK = 1; // Farbe.SCHWARZ, moves first
-  public static final int WHITE = 2; // Farbe.WEISS
+  private static final int EMPTY = 0;
+  static final int BLACK = 1; // Farbe.SCHWARZ, moves first
+  static final int WHITE = 2; // Farbe.WEISS
 
-  public static final int SIZE = 8;
-  public static final int CELLS = SIZE * SIZE;
+  private static final int SIZE = 8;
+  private static final int NUMBER_CELLS = SIZE * SIZE;
 
   /**
    * Sentinel column used to represent a "pass" move.
    */
-  public static final int PASS = -1;
+  private static final int PASS = -1;
 
   /**
-   * The 8 directions as row/col deltas.
+   * The 8 directions as row/col deltas. Order is NW, N, NE, W, E, SW, S, SE (counterclockwise).
+   * Up-Left    DR: -1 ,  DC: -1
+   * Up         DR: -1 ,  DC:  0
+   * Up-Right   DR: -1 ,  DC:  1
+   * Left       DR:  0 ,  DC: -1
+   * Right      DR:  0 ,  DC:  1
+   * Down-Left  DR:  1 ,  DC: -1
+   * Down       DR:  1 ,  DC:  0
+   * Down-Right DR:  1 ,  DC:  1
    */
   private static final int[] DR = {-1, -1, -1, 0, 0, 1, 1, 1};
   private static final int[] DC = {-1, 0, 1, -1, 1, -1, 0, 1};
 
-  private final int[] cells = new int[CELLS];
+  private final int[] boardCells = new int[NUMBER_CELLS];
 
   /**
    * Side to move: BLACK or WHITE.
    */
   private int sideToMove;
 
+  /**
+   * Creates a new board with the standard Othello starting position.
+   */
   public Board() {
     reset();
   }
 
+  /**
+   * Creates a new board with the given cell values and side to move. Used for copy().
+   */
   private Board(int[] cells, int sideToMove) {
-    System.arraycopy(cells, 0, this.cells, 0, CELLS);
+    System.arraycopy(cells, 0, this.boardCells, 0, NUMBER_CELLS);
     this.sideToMove = sideToMove;
   }
 
   /**
    * Reset to the standard Othello start position; BLACK to move.
    */
-  public void reset() {
-    for (int i = 0; i < CELLS; i++) {
-      cells[i] = EMPTY;
-    }
-    cells[idx(3, 3)] = WHITE;
-    cells[idx(3, 4)] = BLACK;
-    cells[idx(4, 3)] = BLACK;
-    cells[idx(4, 4)] = WHITE;
+  private void reset() {
+    Arrays.fill(boardCells, EMPTY);
+    boardCells[idx(3, 3)] = WHITE;
+    boardCells[idx(3, 4)] = BLACK;
+    boardCells[idx(4, 3)] = BLACK;
+    boardCells[idx(4, 4)] = WHITE;
     sideToMove = BLACK;
   }
 
-  public Board copy() {
-    return new Board(cells, sideToMove);
+  /**
+   * Allows the board to be used without altering the original
+   */
+  Board copy() {
+    return new Board(boardCells, sideToMove);
   }
 
-  public static int idx(int row, int col) {
+  /**
+   * Convert (row, col) to flat index.
+   */
+  private int idx(int row, int col) {
     return row * SIZE + col;
   }
 
-  public int get(int row, int col) {
-    return cells[idx(row, col)];
+  /**
+   * Get the value of a certain cell defined by row and col: EMPTY, BLACK, or WHITE.
+   */
+  int getBoardCell(int row, int col) {
+    return boardCells[idx(row, col)];
   }
 
-  public int getSideToMove() {
+  /**
+   * Get the side to move: BLACK or WHITE.
+   */
+  int getSideToMove() {
     return sideToMove;
   }
 
-  public void setSideToMove(int side) {
+  /**
+   * Set {@code side} to move: BLACK or WHITE.
+   */
+  void setSideToMove(int side) {
     this.sideToMove = side;
   }
 
-  public static int opponent(int side) {
+  /**
+   * Get the opponents color by determining {@code side} color.
+   */
+  private int opponent(int side) {
     return side == BLACK ? WHITE : BLACK;
   }
 
@@ -95,8 +126,8 @@ public class Board {
   /**
    * True if {@code side} can legally place a stone at (row, col).
    */
-  public boolean isLegal(int row, int col, int side) {
-    if (cells[idx(row, col)] != EMPTY) {
+  boolean isLegal(int row, int col, int side) {
+    if (boardCells[idx(row, col)] != EMPTY) {
       return false;
     }
     int opp = opponent(side);
@@ -104,13 +135,13 @@ public class Board {
       int r = row + DR[d];
       int c = col + DC[d];
       boolean sawOpp = false;
-      while (r >= 0 && r < SIZE && c >= 0 && c < SIZE && cells[idx(r, c)] == opp) {
+      while (r >= 0 && r < SIZE && c >= 0 && c < SIZE && boardCells[idx(r, c)] == opp) {
         sawOpp = true;
         r += DR[d];
         c += DC[d];
       }
       if (sawOpp && r >= 0 && r < SIZE && c >= 0 && c < SIZE
-          && cells[idx(r, c)] == side) {
+          && boardCells[idx(r, c)] == side) {
         return true;
       }
     }
@@ -120,7 +151,7 @@ public class Board {
   /**
    * All legal moves for {@code side} as int[]{row, col}. Empty list means the side must pass.
    */
-  public List<int[]> legalMoves(int side) {
+  List<int[]> legalMoves(int side) {
     List<int[]> moves = new ArrayList<>();
     for (int row = 0; row < SIZE; row++) {
       for (int col = 0; col < SIZE; col++) {
@@ -132,7 +163,10 @@ public class Board {
     return moves;
   }
 
-  public boolean hasLegalMove(int side) {
+  /**
+   * Evaluates if {@code side} has a legal move available. Used to determine if the game is over.
+   */
+  private boolean hasLegalMove(int side) {
     for (int row = 0; row < SIZE; row++) {
       for (int col = 0; col < SIZE; col++) {
         if (isLegal(row, col, side)) {
@@ -153,7 +187,7 @@ public class Board {
    *
    * @return false if an illegal (non-pass) move was requested.
    */
-  public boolean applyMove(int row, int col, int side) {
+  boolean applyMove(int row, int col, int side) {
     if (col == PASS) {
       sideToMove = opponent(side);
       return true;
@@ -162,22 +196,22 @@ public class Board {
       return false;
     }
     int opp = opponent(side);
-    cells[idx(row, col)] = side;
+    boardCells[idx(row, col)] = side;
     for (int d = 0; d < 8; d++) {
       int r = row + DR[d];
       int c = col + DC[d];
       int n = 0;
-      while (r >= 0 && r < SIZE && c >= 0 && c < SIZE && cells[idx(r, c)] == opp) {
+      while (r >= 0 && r < SIZE && c >= 0 && c < SIZE && boardCells[idx(r, c)] == opp) {
         r += DR[d];
         c += DC[d];
         n++;
       }
       if (n > 0 && r >= 0 && r < SIZE && c >= 0 && c < SIZE
-          && cells[idx(r, c)] == side) {
+          && boardCells[idx(r, c)] == side) {
         r = row + DR[d];
         c = col + DC[d];
         for (int k = 0; k < n; k++) {
-          cells[idx(r, c)] = side;
+          boardCells[idx(r, c)] = side;
           r += DR[d];
           c += DC[d];
         }
@@ -194,14 +228,17 @@ public class Board {
   /**
    * Game over when neither side has a legal move.
    */
-  public boolean isGameOver() {
+  boolean isGameOver() {
     return !hasLegalMove(BLACK) && !hasLegalMove(WHITE);
   }
 
-  public int count(int side) {
+  /**
+   * Number of stones on the board for {@code side}.
+   */
+  int count(int side) {
     int n = 0;
-    for (int i = 0; i < CELLS; i++) {
-      if (cells[i] == side) {
+    for (int i = 0; i < NUMBER_CELLS; i++) {
+      if (boardCells[i] == side) {
         n++;
       }
     }
@@ -211,10 +248,14 @@ public class Board {
   /**
    * Disc difference from {@code side}'s perspective (positive = ahead).
    */
-  public int discDiff(int side) {
+  int discDiff(int side) {
     return count(side) - count(opponent(side));
   }
 
+  /**
+   * Returns a readable string representation of the board state, showing the grid and current side
+   * to move.
+   */
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
@@ -222,8 +263,9 @@ public class Board {
     for (int row = 0; row < SIZE; row++) {
       sb.append(row).append(' ');
       for (int col = 0; col < SIZE; col++) {
-        int v = cells[idx(row, col)];
-        sb.append(v == BLACK ? 'X' : v == WHITE ? 'O' : '.').append(' ');
+        int v = boardCells[idx(row, col)];
+        char nonBlackChar = v == WHITE ? 'O' : '.';
+        sb.append(v == BLACK ? 'X' : nonBlackChar).append(' ');
       }
       sb.append('\n');
     }
