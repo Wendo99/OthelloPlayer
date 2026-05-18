@@ -1,6 +1,4 @@
 ### IntelliJ IDEA ###
-out/
-target/
 !**/src/main/**/out/
 !**/src/test/**/out/
 .kotlin
@@ -11,6 +9,7 @@ target/
 !/.idea/runConfigurations/
 !/.idea/misc.xml
 !/.idea/modules.xml
+
 # keep workspace and per-user files ignored
 /.idea/workspace.xml
 /.idea/tasks.xml
@@ -19,8 +18,6 @@ target/
 /.idea/shelf/
 /.idea/gradle.xml
 *.iml
-# If you use Maven/Gradle, you may want to ignore .iml files:
-# *.iml
 
 ### Java build outputs ###
 /target/
@@ -42,6 +39,7 @@ coverage/
 
 ### Logs and crash files ###
 *.log
+!/log/Othello.log
 hs_err_pid*
 
 ### Local Maven repo (uncommon to be inside project, but safe to ignore) ###
