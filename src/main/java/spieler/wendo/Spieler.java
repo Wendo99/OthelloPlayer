@@ -7,6 +7,9 @@ import spieler.ZugException;
 
 public class Spieler implements OthelloSpieler {
 
+  private Board board;
+  private int myColor;
+  private long totalTimeBudgetMs;
   private String name = "Wendo";
   private static final int DEFAULT_DEPTH = 6;
   private int depth;
@@ -45,7 +48,21 @@ public class Spieler implements OthelloSpieler {
    */
   @Override
   public void neuesSpiel(Farbe meineFarbe, int bedenkzeitInSekunden) {
-    // TODO: initialize new game
+    this.board = new Board();
+    this.myColor = toBoardSide(meineFarbe);
+    this.totalTimeBudgetMs = bedenkzeitInSekunden * 1000L;
+  }
+
+  /**
+   *
+   */
+  private static int toBoardSide(Farbe f) {
+    return switch (f) {
+      case SCHWARZ -> Board.BLACK;
+      case WEISS -> Board.WHITE;
+      default -> throw new IllegalArgumentException(
+          "Player color must be SCHWARZ or WEISS, got " + f);
+    };
   }
 
   /**
