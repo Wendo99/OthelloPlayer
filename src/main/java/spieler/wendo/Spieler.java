@@ -13,6 +13,7 @@ public class Spieler implements OthelloSpieler {
   private String name = "Wendo";
   private static final int DEFAULT_DEPTH = 6;
   private int depth;
+  private MiniMax miniMax;
 
   public Spieler() {
     setDepth(DEFAULT_DEPTH);
@@ -24,18 +25,34 @@ public class Spieler implements OthelloSpieler {
 
   /**
    * Ihr Spieler muss den berechneten Zug als Zug-Objekt zurückgeben. Zug-Objekte sind ein Paar
-   * (Zeile, Spalte). Das erste Element sitzt oben links und hat den Wert (0,0). Das zweite Element
+   * (Zeile, Spalte). Das erste Element sitzt oben links und hat den Wert (0,0). Das zweite
+   * Element
    * der ersten Zeile dementsprechend (0,1). Das letzte Element unten rechts hat den Wert (7,7).
-   * Wenn Sie passen müssen, liefern Sie bitte Zug.setPassen() zurück. Sollte die Berechnung eines
+   * Wenn Sie passen müssen, liefern Sie bitte {@code Zug.passenZug()} zurück. Sollte die Berechnung
+   * eines
    * Zuges nicht möglich sein (z.B. weil der vorhergehende Zug aus Sicht Ihrer Berechnung falsch
    * ist), so werfen Sie bitte eine ZugException. Wenn Sie als Erster ziehen dürfen, ist
    * vorherigerZug == null In zeitWeiss bzw. zeitSchwarz wird die bislang verbrauchte Zeit des
    * weissen bzw. schwarzen Spielers in ms angegeben.
+   *
+   * @param vorherigerZug The opponent's move in the previous turn, or null if we are to move
+   *                      first.
+   * @param zeitWeiss     The time taken by the white player so far, in milliseconds.
+   * @param zeitSchwarz   The time taken by the black player so far, in milliseconds.
+   * @return The move our player now wants to make.
+   * @throws ZugException If it is not possible to calculate a move.
    */
   @Override
   public Zug berechneZug(Zug vorherigerZug, long zeitWeiss, long zeitSchwarz) throws ZugException {
-    // TODO: calculate own turn
-    return null;
+    // TODO: implement time management and search exceptions
+    // 1. catch up on opponent's move
+    replayOpponentMove(vorherigerZug);
+
+    // 2. think
+    int[] best = miniMax.bestMove(board, depth, myColor);
+
+    // 3. commit and report move
+    return finalizeMove(best);
   }
 
   /**
@@ -43,18 +60,70 @@ public class Spieler implements OthelloSpieler {
    * Sie sich Ihre Farbe. Der Parameter bedenkzeitInSekunden gibt an, wie viel Bedenkzeit Ihrer
    * Maschine insgesamt zur Verfügung steht (für alle Züge zusammen).
    *
-   * @param meineFarbe
-   * @param bedenkzeitInSekunden
+   * @param meineFarbe           The color we are playing in this game (BLACK or WHITE).
+   * @param bedenkzeitInSekunden The total thinking time for all moves in this game, in seconds.
    */
   @Override
   public void neuesSpiel(Farbe meineFarbe, int bedenkzeitInSekunden) {
     this.board = new Board();
+    this.miniMax = new MiniMax();
     this.myColor = toBoardSide(meineFarbe);
     this.totalTimeBudgetMs = bedenkzeitInSekunden * 1000L;
   }
 
   /**
+   * Helper for {@code berechneZug} that applies the opponent's previous move to our board, or
+   * throws on desync.
    *
+   * @param vorherigerZug The opponent's previous move, or null if we are to move first.
+   * @throws ZugException If the opponent's move is illegal on our board.
+   */
+  private void replayOpponentMove(Zug vorherigerZug) throws ZugException {
+    int oppColor = board.opponent(myColor);
+
+    if (vorherigerZug != null) { // if null, we are black and move first
+      if (vorherigerZug.isPassen()) {
+        board.applyMove(0, Board.PASS, oppColor);
+      } else {
+        boolean isMoveValid = board.applyMove(vorherigerZug.getZeile(), vorherigerZug.getSpalte(),
+            oppColor);
+        if (!isMoveValid) {
+          throw new ZugException("Opponent move illegal on our board: state desync.");
+        }
+      }
+    }
+  }
+
+  /**
+   * Applies our chosen move (or a pass when {@code best} is null) to our board and returns the
+   * corresponding Zug object.
+   *
+   * @param best The best move as (row, col) pair, or null if we must pass.
+   * @return The Zug object representing the move we just made.
+   */
+  private Zug finalizeMove(int[] best) throws ZugException {
+    boolean isMoveValid;
+    if (best == null) {
+      isMoveValid = board.applyMove(0, Board.PASS, myColor);
+      if (!isMoveValid) {
+        throw new ZugException("We have no legal moves but failed to pass: state desync.");
+      }
+      return Zug.passenZug();
+    }
+    isMoveValid = board.applyMove(best[0], best[1], myColor);
+    if (!isMoveValid) {
+      throw new ZugException("Chosen move illegal on our board: state desync.");
+    }
+    return new Zug(best[0], best[1]);
+  }
+
+
+  /**
+   * Helper for {@code neuesSpiel} that converts Farbe values to int.
+   *
+   * @param f The color we are playing, as a Farbe enum value.
+   * @return The corresponding int value for the Board class.
+   * @throws IllegalArgumentException If the color is not SCHWARZ or WEISS.
    */
   private static int toBoardSide(Farbe f) {
     return switch (f) {
@@ -67,6 +136,8 @@ public class Spieler implements OthelloSpieler {
 
   /**
    * Liefert den Namen Ihres Spielers zurück
+   *
+   * @return Our player's name.
    */
   @Override
   public String meinName() {
@@ -81,8 +152,15 @@ public class Spieler implements OthelloSpieler {
     return depth;
   }
 
+  /**
+   * Sets the maximum search depth that our player aims for when calculating a move.
+   *
+   * @param depth The maximum depth of search our player aims for when calculating a move.
+   */
   public void setDepth(int depth) {
-    this.depth = depth;
+    if (depth >= 1) {
+      this.depth = depth;
+    }
   }
 }
 
