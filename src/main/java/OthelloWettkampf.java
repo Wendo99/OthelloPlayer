@@ -17,8 +17,8 @@ public class OthelloWettkampf {
         List<String> spieler =
                 new ArrayList<>();
         //Die Spieler
-        spieler.add("spieler.Rumpfspieler"); //Referenzspieler in Standardeinstellung
-        spieler.add("spieler.Rumpfspieler:6"); //Referenzspieler mit Zugtiefe 6
+        spieler.add("spieler.wendo.Spieler:6"); //unser Spieler mit Zugtiefe 6
+        spieler.add("spieler.Rumpfspieler:6");  //Referenzgegner mit Zugtiefe 6
 
         String protokolldatei = "/Users/Wendo99/50-Apps-local/IntelliJ/OthelloPlayer/log/Othello.log";
 
