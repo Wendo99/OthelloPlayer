@@ -54,7 +54,9 @@ public class MiniMax {
       return handlePass(board, depth, alpha, beta, side, oppColor);
     }
 
-    // TODO: ORDER `moves` here (see notes) — NegaScout lives or dies on this.
+    // Best-first ordering: try high-value squares (corners, edges) before bad ones
+    // (X-/C-squares). NegaScout only prunes well when the likely-best move comes first.
+    orderMoves(moves);
 
     boolean first = true;
     int best = LOSS;
@@ -79,6 +81,15 @@ public class MiniMax {
       }
     }
     return best;
+  }
+
+  /**
+   * Sorts {@code moves} in place, best guess first: descending by the static square value from the
+   * evaluator's weight table. A pure heuristic ordering — it does not change which move is correct,
+   * only how quickly NegaScout finds and proves it, which is what lets the search reach more plies.
+   */
+  private void orderMoves(List<int[]> moves) {
+    moves.sort((a, b) -> evaluator.squareValue(b[0], b[1]) - evaluator.squareValue(a[0], a[1]));
   }
 
   /**
@@ -134,7 +145,10 @@ public class MiniMax {
     int beta = WIN;
     boolean first = true;
 
-    for (int[] mv : board.legalMoves(side)) {
+    List<int[]> moves = board.legalMoves(side);
+    orderMoves(moves);
+
+    for (int[] mv : moves) {
       Board child = board.copy();
       child.applyMove(mv[0], mv[1], side);
       int score;

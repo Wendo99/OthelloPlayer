@@ -81,4 +81,13 @@ public class Evaluate {
     }
     return score;
   }
+
+  /**
+   * Static desirability of a single square, taken from the positional weight table (corners high,
+   * X-/C-squares negative). Used by the search for move ordering — it is a cheap, side-independent
+   * guess at how good a move to that square is likely to be.
+   */
+  int squareValue(int row, int col) {
+    return WEIGHTS[row * 8 + col];
+  }
 }

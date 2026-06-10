@@ -1,6 +1,7 @@
 package spieler.wendo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -257,5 +258,24 @@ class EvaluateTest {
 
     assertEquals(7000, eval.evaluate(b, Board.BLACK));
     assertEquals(-7000, eval.evaluate(b, Board.WHITE)); // antisymmetric in the endgame branch too
+  }
+
+  // ---------------------------------------------------------------------
+  // squareValue: the move-ordering key. Corners must outrank everything, and
+  // X-squares must rank below quiet centre squares so they are tried last.
+  // ---------------------------------------------------------------------
+
+  @Test
+  void squareValue_rankingCornersHighestXSquaresLowest() {
+    int corner = eval.squareValue(0, 0);   // +120
+    int edge = eval.squareValue(0, 3);     //   +5
+    int centre = eval.squareValue(3, 3);   //   +3
+    int xSquare = eval.squareValue(1, 1);  //  -40
+
+    assertEquals(120, corner);
+    assertEquals(-40, xSquare);
+    assertTrue(corner > edge);
+    assertTrue(edge > centre);
+    assertTrue(centre > xSquare); // ordering: corner > edge > centre > X-square
   }
 }
