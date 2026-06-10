@@ -12,6 +12,10 @@ public class Spieler implements OthelloSpieler {
   private long totalTimeBudgetMs;
   private String name = "Wendo";
   private static final int DEFAULT_DEPTH = 6;
+
+  /** Never spend less than this on a single move, even when the clock is nearly empty. */
+  private static final long MIN_MOVE_MS = 50;
+
   private int depth;
   private MiniMax miniMax;
 
@@ -44,15 +48,43 @@ public class Spieler implements OthelloSpieler {
    */
   @Override
   public Zug berechneZug(Zug vorherigerZug, long zeitWeiss, long zeitSchwarz) throws ZugException {
-    // TODO: implement time management and search exceptions
     // 1. catch up on opponent's move
     replayOpponentMove(vorherigerZug);
 
-    // 2. think
-    int[] best = miniMax.bestMove(board, depth, myColor);
+    // 2. think: iterative deepening, bounded by the time we can afford for this move.
+    int empties = countEmpties();
+    long perMoveMs = perMoveBudgetMs(zeitWeiss, zeitSchwarz, empties);
+    int maxDepth = Math.min(depth, empties); // can't look beyond the end of the game
+
+    int[] best = miniMax.bestMove(board, maxDepth, myColor, perMoveMs);
 
     // 3. commit and report move
     return finalizeMove(best);
+  }
+
+  /**
+   * Allocates how long the current move may take: the time we have left, divided by the number of
+   * moves we still expect to make, minus a 10% reserve so a slightly-overrunning search never
+   * flags the clock.
+   *
+   * @param zeitWeiss   time the white player has used so far, in ms
+   * @param zeitSchwarz time the black player has used so far, in ms
+   * @param empties     number of empty squares left on the board
+   * @return the time budget for this move, in milliseconds
+   */
+  private long perMoveBudgetMs(long zeitWeiss, long zeitSchwarz, int empties) {
+    long used = (myColor == Board.BLACK) ? zeitSchwarz : zeitWeiss;
+    long remaining = totalTimeBudgetMs - used;
+    int myMovesLeft = Math.max(1, empties / 2); // we make roughly half of the remaining moves
+    long budget = (remaining / myMovesLeft) * 9 / 10;
+    return Math.max(MIN_MOVE_MS, budget);
+  }
+
+  /**
+   * @return the number of empty squares remaining on the board.
+   */
+  private int countEmpties() {
+    return 64 - board.count(Board.BLACK) - board.count(Board.WHITE);
   }
 
   /**

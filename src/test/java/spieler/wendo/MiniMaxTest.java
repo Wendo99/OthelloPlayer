@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -106,6 +108,55 @@ class MiniMaxTest {
 
     assertNotNull(best);
     assertTrue(isAmong(best, b.legalMoves(Board.BLACK)));
+  }
+
+  // ---------------------------------------------------------------------
+  // Iterative deepening / time-bounded search
+  // ---------------------------------------------------------------------
+
+  @Test
+  void bestMoveTimed_returnsLegalMoveWithinBudget() {
+    // maxDepth 64 is far more than could finish in 200 ms; if the time abort works the call
+    // returns promptly with a legal move. The 5 s preemptive guard fails the test if the search
+    // ignores the budget and tries to run depth 64 to completion.
+    Board b = new Board();
+
+    int[] best = assertTimeoutPreemptively(Duration.ofSeconds(5),
+        () -> mm.bestMove(b, 64, Board.BLACK, 200));
+
+    assertNotNull(best);
+    assertTrue(isAmong(best, b.legalMoves(Board.BLACK)));
+  }
+
+  @Test
+  void bestMoveTimed_returnsNullWhenNoLegalMove() {
+    Board full = TestBoards.of(Board.BLACK,
+        "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX");
+
+    assertNull(mm.bestMove(full, 64, Board.BLACK, 200));
+  }
+
+  @Test
+  void bestMoveTimed_honoursTheSingleForcedMove() {
+    // Same forced-move position as the fixed-depth test: iterative deepening must still find it.
+    Board onlyOne = TestBoards.of(Board.BLACK,
+        "XO......"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........");
+
+    assertArrayEquals(new int[]{0, 2}, mm.bestMove(onlyOne, 64, Board.BLACK, 500));
   }
 
   // ---------------------------------------------------------------------

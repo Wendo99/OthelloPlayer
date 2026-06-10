@@ -8,6 +8,21 @@ public class MiniMax {
   private static final int LOSS = -1_000_000;
   private final Evaluate evaluator;
 
+  /** Absolute wall-clock cutoff (ms) for the current search; {@link Long#MAX_VALUE} disables it. */
+  private long deadline = Long.MAX_VALUE;
+
+  /**
+   * Thrown to unwind the recursion when the time budget is exhausted. Stack trace is suppressed
+   * because it is used purely as control flow, thrown at most once per search.
+   */
+  private static final class TimeUp extends RuntimeException {
+    private TimeUp() {
+      super(null, null, false, false);
+    }
+  }
+
+  private static final TimeUp TIME_UP = new TimeUp();
+
   public MiniMax(Evaluate evaluator) {
     this.evaluator = evaluator;
   }
@@ -40,6 +55,12 @@ public class MiniMax {
    * @return score of {@code board} from the perspective of {@code side} to move.
    */
   private int negascout(Board board, int depth, int alpha, int beta, int side) {
+    // 0. Time guard: abandon this search if the budget is spent. The iterative-deepening
+    //    caller catches this and keeps the best move from the last fully completed depth.
+    if (System.currentTimeMillis() > deadline) {
+      throw TIME_UP;
+    }
+
     // 1. Stop conditions: Terminal / depth limit
     if (depth == 0 || board.isGameOver()) {
       return evaluateScore(board, side);
@@ -129,43 +150,88 @@ public class MiniMax {
   }
 
   /**
-   * Entry point Spieler will call.
-   * It walks the legal moves once at the root, scores each one by calling negascout on the
-   * resulting position, and returns the {@code int[]{row, col}} of the highest-scoring move (or
-   * null if no legal moves → caller must pass).
+   * Fixed-depth entry point: searches exactly {@code depth} plies with no time limit. Returns the
+   * best move as an {@code int[]{row, col}}, or null if there is no legal move (caller must pass).
    *
    * @param board the current board state
-   * @param depth how  many plies to look ahead
+   * @param depth how many plies to look ahead
    * @param side  the side to move (BLACK or WHITE)
-   * @return the best move as (row, col) pair, or null if no
+   * @return the best move as (row, col) pair, or null if no legal move exists
    */
   int[] bestMove(Board board, int depth, int side) {
+    deadline = Long.MAX_VALUE; // no time limit on the fixed-depth search
+
+    List<int[]> moves = board.legalMoves(side);
+    if (moves.isEmpty()) {
+      return null;
+    }
+    orderMoves(moves);
+    return searchRoot(board, depth, side, moves);
+  }
+
+  /**
+   * Time-bounded iterative deepening: searches depth 1, 2, 3, … up to {@code maxDepth}, and returns
+   * the best move from the deepest search that fully completed before {@code timeBudgetMs} elapsed.
+   * Each completed depth promotes its best move to the front of the move list, so the next (deeper)
+   * pass searches the principal variation first — sharpening the pruning as we go.
+   *
+   * @param board        the current board state
+   * @param maxDepth     hard ceiling on plies (the search usually stops earlier, on time)
+   * @param side         the side to move (BLACK or WHITE)
+   * @param timeBudgetMs how long this move may take, in milliseconds
+   * @return the best move as (row, col) pair, or null if no legal move exists
+   */
+  int[] bestMove(Board board, int maxDepth, int side, long timeBudgetMs) {
+    deadline = System.currentTimeMillis() + timeBudgetMs;
+
+    List<int[]> moves = board.legalMoves(side);
+    if (moves.isEmpty()) {
+      return null;
+    }
+    orderMoves(moves);
+
+    int[] best = moves.get(0); // fallback: a legal move even if depth 1 never finishes
+    for (int depth = 1; depth <= maxDepth; depth++) {
+      try {
+        best = searchRoot(board, depth, side, moves);
+        moveToFront(moves, best); // PV-first ordering for the next, deeper pass
+      } catch (TimeUp e) {
+        break; // ran out of time mid-depth: discard it, keep the last completed depth's best
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Searches one ply level over the given pre-ordered root moves and returns the argmax move.
+   */
+  private int[] searchRoot(Board board, int depth, int side, List<int[]> moves) {
     int[] best = null;
     int alpha = LOSS;
     int beta = WIN;
     boolean first = true;
-
-    List<int[]> moves = board.legalMoves(side);
-    orderMoves(moves);
+    int oppColor = board.opponent(side);
 
     for (int[] mv : moves) {
       Board child = board.copy();
       child.applyMove(mv[0], mv[1], side);
-      int score;
-      if (first) {
-        score = -negascout(child, depth - 1, -beta, -alpha, board.opponent(side));
-        first = false;
-      } else {
-        score = -negascout(child, depth - 1, -alpha - 1, -alpha, board.opponent(side));
-        if (alpha < score && score < beta) {
-          score = -negascout(child, depth - 1, -beta, -score, board.opponent(side));
-        }
-      }
+      int score = searchChild(child, depth, alpha, beta, oppColor, first);
+      first = false;
+
       if (best == null || score > alpha) {   // keep argmax
         alpha = score;
         best = mv;
       }
     }
-    return best;   // null only if no legal move -> caller passes
+    return best;
+  }
+
+  /**
+   * Moves {@code mv} to the head of {@code moves} (used to search the previous best move first).
+   */
+  private void moveToFront(List<int[]> moves, int[] mv) {
+    if (moves.remove(mv)) {
+      moves.add(0, mv);
+    }
   }
 }
