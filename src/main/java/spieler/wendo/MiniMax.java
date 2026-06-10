@@ -2,27 +2,28 @@ package spieler.wendo;
 
 import java.util.List;
 
-// TODO: Write Tests
 public class MiniMax {
 
   private static final int WIN = 1_000_000;   // sentinel scores
   private static final int LOSS = -1_000_000;
+  private final Evaluate evaluator;
 
+  public MiniMax(Evaluate evaluator) {
+    this.evaluator = evaluator;
+  }
 
   /**
-   * Just disc difference. It's a stand-in until a real Evaluator
+   *
    */
-  private int evaluate(Board b, int side) {
-    // TODO: inject a real Evaluator
-    // MUST be symmetric: evaluate(b, side) == -evaluate(b, opponent(side))
-    return b.count(side) - b.count(b.opponent(side));   // weak; replace later
+  private int evaluateScore(Board b, int side) {
+    return evaluator.evaluate(b, side);
   }
 
   /**
    * This is the brain. Given a board and how many plies to look ahead, it returns a score from the
    * side-to-move's perspective. It does four things in order
    * <p>
-   * 1. Stop conditions: if depth ran out or the game is over → score the board and return.
+   * 1. Stop conditions: if depth ran out or the game is over → evaluate the board and return.
    * 2. Pass handling: if the side has no legal moves but the game isn't over → make a
    * pass move and recurse with the other side.
    * 3. Try every legal move: for each move, copy the board, play the move, recurse
@@ -31,21 +32,26 @@ public class MiniMax {
    * this even better than what I have?" probe, and only get a full re-search if the probe says
    * yes.
    *
+   * @param board the current board state
+   * @param depth how many plies to look ahead (decrements on each recursive call)
+   * @param alpha the best score that the side to move can guarantee so far
+   * @param beta  the best score that the opponent can guarantee so far
+   * @param side  the side to move (BLACK or WHITE)
    * @return score of {@code board} from the perspective of {@code side} to move.
    */
   private int negascout(Board board, int depth, int alpha, int beta, int side) {
     // 1. Stop conditions: Terminal / depth limit
     if (depth == 0 || board.isGameOver()) {
-      return evaluate(board, side);
+      return evaluateScore(board, side);
     }
 
-    int opp = board.opponent(side);
+    int oppColor = board.opponent(side);
     List<int[]> moves = board.legalMoves(side);
 
     // 2. Pass handling: No move available, but game not over -> forced PASS (no depth cost,
     //    swap side). Two passes in a row -> isGameOver() was already true.
     if (moves.isEmpty()) {
-      return handlePass(board, depth, alpha, beta, side, opp);
+      return handlePass(board, depth, alpha, beta, side, oppColor);
     }
 
     // TODO: ORDER `moves` here (see notes) — NegaScout lives or dies on this.
@@ -59,7 +65,7 @@ public class MiniMax {
       child.applyMove(mv[0], mv[1], side);
 
       // 4. The NegaScout twist (extracted helper to reduce cognitive complexity)
-      int score = searchChild(child, depth, alpha, beta, opp, first);
+      int score = searchChild(child, depth, alpha, beta, oppColor, first);
       first = false;
 
       if (score > best) {
@@ -76,7 +82,7 @@ public class MiniMax {
   }
 
   /**
-   * Extracted helper for child search to simplify negascout and reduce complexity score
+   * Extracted helper to child search in {@code negascout}
    */
   private int searchChild(Board child, int depth, int alpha, int beta, int opp, boolean first) {
     if (first) {
@@ -93,7 +99,17 @@ public class MiniMax {
   }
 
   /**
+   * This is a separate helper because passing doesn't cost depth (it's not really a move,
+   * just a forced skip), but it does swap sides. So we recurse with the same depth but opposite
+   * side.
    *
+   * @param board the current board state
+   * @param depth how many plies to look ahead
+   * @param alpha the  best score that the side to move can guarantee so far
+   * @param beta  the  best score that the opponent can guarantee so far
+   * @param side  the side to move (BLACK or WHITE)
+   * @param opp   the opponent's color
+   * @return the score of the position resulting from {@code side} passing, from {@code side}'s perspective.
    */
   private int handlePass(Board board, int depth, int alpha, int beta, int side, int opp) {
     Board passed = board.copy();
@@ -101,13 +117,16 @@ public class MiniMax {
     return -negascout(passed, depth, -beta, -alpha, opp);
   }
 
-  // TODO: No one is calling so far. Wire it up end-to-end (the framework).
-
   /**
-   * Entry point the Spieler will call.
+   * Entry point Spieler will call.
    * It walks the legal moves once at the root, scores each one by calling negascout on the
    * resulting position, and returns the {@code int[]{row, col}} of the highest-scoring move (or
    * null if no legal moves → caller must pass).
+   *
+   * @param board the current board state
+   * @param depth how  many plies to look ahead
+   * @param side  the side to move (BLACK or WHITE)
+   * @return the best move as (row, col) pair, or null if no
    */
   int[] bestMove(Board board, int depth, int side) {
     int[] best = null;

@@ -21,7 +21,7 @@ class MiniMaxTest {
 
   @BeforeEach
   void setUp() {
-    mm = new MiniMax();
+    mm = new MiniMax(new Evaluate());
   }
 
   // ---------------------------------------------------------------------

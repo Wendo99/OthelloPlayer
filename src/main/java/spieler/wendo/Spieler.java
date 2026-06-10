@@ -66,7 +66,7 @@ public class Spieler implements OthelloSpieler {
   @Override
   public void neuesSpiel(Farbe meineFarbe, int bedenkzeitInSekunden) {
     this.board = new Board();
-    this.miniMax = new MiniMax();
+    this.miniMax = new MiniMax(new Evaluate());
     this.myColor = toBoardSide(meineFarbe);
     this.totalTimeBudgetMs = bedenkzeitInSekunden * 1000L;
   }

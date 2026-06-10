@@ -206,4 +206,56 @@ class EvaluateTest {
     assertEquals(160, fromBlack); // +120 (own corner) - (-40) (opp X-square)
     assertEquals(-fromBlack, fromWhite);
   }
+
+  // ---------------------------------------------------------------------
+  // evaluate: the whole-position contract the search actually calls.
+  // Must be antisymmetric: evaluate(b, side) == -evaluate(b, opp).
+  // ---------------------------------------------------------------------
+
+  @Test
+  void evaluate_startPositionIsZero() {
+    // The start is perfectly symmetric: corners empty, equal mobility, and the
+    // four central stones mirror each other -> every term cancels to 0.
+    Board b = new Board();
+    assertEquals(0, eval.evaluate(b, Board.BLACK));
+    assertEquals(0, eval.evaluate(b, Board.WHITE));
+  }
+
+  @Test
+  void evaluate_isAntisymmetricInMidgame() {
+    // A sparse midgame position (< 50 discs) so the midgame branch runs and all
+    // three terms (corner, mobility, positional) contribute.
+    Board b = TestBoards.of(Board.BLACK,
+        "X......O"
+            + "..XO...."
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........");
+
+    int fromBlack = eval.evaluate(b, Board.BLACK);
+    assertEquals(-fromBlack, eval.evaluate(b, Board.WHITE));
+  }
+
+  @Test
+  void evaluate_endgameUsesDiscCountAndCorners() {
+    // 64 discs -> endgame branch: 100 * discDiff + 1000 * corner.
+    // Rows 0-6 BLACK (56) + row 7 "XOOOOOOO" -> BLACK 57, WHITE 7 -> discDiff 50.
+    // Corners: (0,0),(0,7),(7,0) BLACK, (7,7) WHITE -> corner = +2.
+    // 100*50 + 1000*2 = 7000.
+    Board b = TestBoards.of(Board.BLACK,
+        "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XOOOOOOO");
+
+    assertEquals(7000, eval.evaluate(b, Board.BLACK));
+    assertEquals(-7000, eval.evaluate(b, Board.WHITE)); // antisymmetric in the endgame branch too
+  }
 }

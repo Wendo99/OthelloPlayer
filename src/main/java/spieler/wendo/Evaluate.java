@@ -72,11 +72,11 @@ public class Evaluate {
       for (int col = 0; col < 8; col++) {
         int cell = b.getBoardCell(row, col);
         int w = WEIGHTS[row * 8 + col];
-         if( cell == side) {
-           score += w;
-         }  else if (cell == opp) {
-           score -= w;
-         }
+        if (cell == side) {
+          score += w;
+        } else if (cell == opp) {
+          score -= w;
+        }
       }
     }
     return score;

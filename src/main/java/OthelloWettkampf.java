@@ -1,31 +1,30 @@
-import rahmen.OthelloArena;
-
 import java.util.ArrayList;
 import java.util.List;
+import rahmen.OthelloArena;
 
 public class OthelloWettkampf {
 
-    public static void main(String[] args) {
-        /* Es muss ein OthelloArena-Objekt erzeugt
-         * werden. Bei der Erzeugung werden die am Wettkampf
-         * teilnehmenden Spieler in Form einer Liste von
-         * Othello-Spielern übergeben. Durch die Erzeugung des
-         * OthelloArena-Objekts wird der Wettkampf gestartet.
-         */
+  public static void main(String[] args) {
+    /* Es muss ein OthelloArena-Objekt erzeugt
+     * werden. Bei der Erzeugung werden die am Wettkampf
+     * teilnehmenden Spieler in Form einer Liste von
+     * Othello-Spielern übergeben. Durch die Erzeugung des
+     * OthelloArena-Objekts wird der Wettkampf gestartet.
+     */
 
-        //Spielerliste aufbauen
-        List<String> spieler =
-                new ArrayList<>();
-        //Die Spieler
-        spieler.add("spieler.wendo.Spieler:6"); //unser Spieler mit Zugtiefe 6
-        spieler.add("spieler.Rumpfspieler:6");  //Referenzgegner mit Zugtiefe 6
+    // Spielerliste aufbauen
+    List<String> spieler = new ArrayList<>();
 
-        String protokolldatei = "/Users/Wendo99/50-Apps-local/IntelliJ/OthelloPlayer/log/Othello.log";
+    // Die Spieler
+    spieler.add("spieler.wendo.Spieler:10");
+    spieler.add("spieler.Rumpfspieler:6");  // Referenzgegner mit Zugtiefe 6
 
-        new OthelloArena(150,  //Gesamtbedenkzeit in Sekunden
-                spieler,                //Spielerliste
-                protokolldatei,         //Dateiname für Ergebnisausgaben
-                true                      //debug
-        );
-    }
+    String protokolldatei = "/Users/Wendo99/50-Apps-local/IntelliJ/OthelloPlayer/log/Othello.log";
+
+    new OthelloArena(150,  // Gesamtbedenkzeit in Sekunden
+        spieler,                    // Spielerliste
+        protokolldatei,             // Dateiname für Ergebnisausgaben
+        true                        // debug
+    );
+  }
 }
