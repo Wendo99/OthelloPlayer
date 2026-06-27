@@ -5,19 +5,16 @@ import spieler.OthelloSpieler;
 import spieler.Zug;
 import spieler.ZugException;
 
-public class Spieler implements OthelloSpieler {
+public final class Spieler implements OthelloSpieler {
+
+  private static final String NAME = "Wendo";
+  private static final int DEFAULT_DEPTH = 6;
 
   private Board board;
   private int myColor;
-  private long totalTimeBudgetMs;
-  private String name = "Wendo";
-  private static final int DEFAULT_DEPTH = 6;
-
-  /** Never spend less than this on a single move, even when the clock is nearly empty. */
-  private static final long MIN_MOVE_MS = 50;
-
-  private int depth;
+  private int depth = DEFAULT_DEPTH;
   private MiniMax miniMax;
+  private TimeManager timeManager;
 
   public Spieler() {
     setDepth(DEFAULT_DEPTH);
@@ -52,39 +49,15 @@ public class Spieler implements OthelloSpieler {
     replayOpponentMove(vorherigerZug);
 
     // 2. think: iterative deepening, bounded by the time we can afford for this move.
-    int empties = countEmpties();
-    long perMoveMs = perMoveBudgetMs(zeitWeiss, zeitSchwarz, empties);
+    int empties = board.emptyCount();
+    long used = (myColor == Board.BLACK) ? zeitSchwarz : zeitWeiss;
+    long perMoveMs = timeManager.budgetForMove(used, empties);
     int maxDepth = Math.min(depth, empties); // can't look beyond the end of the game
 
     int[] best = miniMax.bestMove(board, maxDepth, myColor, perMoveMs);
 
     // 3. commit and report move
     return finalizeMove(best);
-  }
-
-  /**
-   * Allocates how long the current move may take: the time we have left, divided by the number of
-   * moves we still expect to make, minus a 10% reserve so a slightly-overrunning search never
-   * flags the clock.
-   *
-   * @param zeitWeiss   time the white player has used so far, in ms
-   * @param zeitSchwarz time the black player has used so far, in ms
-   * @param empties     number of empty squares left on the board
-   * @return the time budget for this move, in milliseconds
-   */
-  private long perMoveBudgetMs(long zeitWeiss, long zeitSchwarz, int empties) {
-    long used = (myColor == Board.BLACK) ? zeitSchwarz : zeitWeiss;
-    long remaining = totalTimeBudgetMs - used;
-    int myMovesLeft = Math.max(1, empties / 2); // we make roughly half of the remaining moves
-    long budget = (remaining / myMovesLeft) * 9 / 10;
-    return Math.max(MIN_MOVE_MS, budget);
-  }
-
-  /**
-   * @return the number of empty squares remaining on the board.
-   */
-  private int countEmpties() {
-    return 64 - board.count(Board.BLACK) - board.count(Board.WHITE);
   }
 
   /**
@@ -100,7 +73,7 @@ public class Spieler implements OthelloSpieler {
     this.board = new Board();
     this.miniMax = new MiniMax(new Evaluate());
     this.myColor = toBoardSide(meineFarbe);
-    this.totalTimeBudgetMs = bedenkzeitInSekunden * 1000L;
+    this.timeManager = new TimeManager(bedenkzeitInSekunden * 1000L);
   }
 
   /**
@@ -115,6 +88,9 @@ public class Spieler implements OthelloSpieler {
 
     if (vorherigerZug != null) { // if null, we are black and move first
       if (vorherigerZug.isPassen()) {
+        if (!board.legalMoves(oppColor).isEmpty()) {
+          throw new ZugException("Opponent passed but had a legal move: state desync.");
+        }
         board.applyMove(0, Board.PASS, oppColor);
       } else {
         boolean isMoveValid = board.applyMove(vorherigerZug.getZeile(), vorherigerZug.getSpalte(),
@@ -157,7 +133,7 @@ public class Spieler implements OthelloSpieler {
    * @return The corresponding int value for the Board class.
    * @throws IllegalArgumentException If the color is not SCHWARZ or WEISS.
    */
-  private static int toBoardSide(Farbe f) {
+  private int toBoardSide(Farbe f) {
     return switch (f) {
       case SCHWARZ -> Board.BLACK;
       case WEISS -> Board.WHITE;
@@ -173,23 +149,22 @@ public class Spieler implements OthelloSpieler {
    */
   @Override
   public String meinName() {
-    return name;
+    return NAME;
   }
 
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  public int getDepth() {
+  int getDepth() {
     return depth;
   }
 
   /**
-   * Sets the maximum search depth that our player aims for when calculating a move.
+   * Sets the maximum search depth the player aims for. Values below 1 are invalid and are
+   * <em>ignored</em>: the previous depth is kept (initially {@link #DEFAULT_DEPTH}). This keeps the
+   * player usable even when constructed with a bad depth from the arena config, instead of failing
+   * instantiation.
    *
-   * @param depth The maximum depth of search our player aims for when calculating a move.
+   * @param depth the desired maximum search depth; ignored if less than 1
    */
-  public void setDepth(int depth) {
+  void setDepth(int depth) {
     if (depth >= 1) {
       this.depth = depth;
     }

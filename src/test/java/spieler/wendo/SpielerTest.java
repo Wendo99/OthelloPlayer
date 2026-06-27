@@ -1,6 +1,5 @@
 package spieler.wendo;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -17,11 +16,20 @@ import spieler.ZugException;
  */
 class SpielerTest {
 
-  /** Shallow depth keeps these tests fast; depth does not affect legality. */
+  /**
+   * Shallow depth keeps these tests fast; depth does not affect legality.
+   */
   private static Spieler newPlayer(Farbe color) {
     Spieler s = new Spieler(2);
     s.neuesSpiel(color, 150);
     return s;
+  }
+
+  @Test
+  void neuesSpiel_rejectsLeerColor() {
+    Spieler s = new Spieler();
+    // Farbe.LEER is not a playable side; we must reject it rather than mis-map it.
+    assertThrows(IllegalArgumentException.class, () -> s.neuesSpiel(Farbe.LEER, 150));
   }
 
   // ---------------------------------------------------------------------
@@ -66,15 +74,16 @@ class SpielerTest {
   }
 
   // ---------------------------------------------------------------------
-  // We correctly relay an opponent PASS without throwing
+  // An opponent PASS while they still have a legal move is a desync -> ZugException
   // ---------------------------------------------------------------------
 
   @Test
-  void berechneZug_acceptsOpponentPass() {
+  void berechneZug_throwsWhenOpponentPassesWithLegalMoves() {
     Spieler s = newPlayer(Farbe.WEISS);
 
-    // Opponent passing is always state-consistent; we must not throw.
-    assertDoesNotThrow(() -> s.berechneZug(Zug.passenZug(), 0L, 0L));
+    // From the start position BLACK has four legal moves, so a BLACK pass cannot be
+    // legitimate: our board would silently desync. We must reject it.
+    assertThrows(ZugException.class, () -> s.berechneZug(Zug.passenZug(), 0L, 0L));
   }
 
   // ---------------------------------------------------------------------
@@ -94,6 +103,14 @@ class SpielerTest {
 
     s.setDepth(4);
     assertEquals(4, s.getDepth()); // accepted
+  }
+
+  @Test
+  void constructor_fallsBackToDefaultDepthOnInvalidInput() {
+    // new Spieler(0)/(-1) must not leave the object with depth 0 (which would disable
+    // the search). The field defaults to DEFAULT_DEPTH and the invalid value is ignored.
+    assertEquals(6, new Spieler(0).getDepth());
+    assertEquals(6, new Spieler(-1).getDepth());
   }
 
   // ---------------------------------------------------------------------
