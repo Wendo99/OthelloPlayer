@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Internal Othello game state and rules engine.
  *
- * <p>This is our private player board representation, completely independent of the
+ * <p>This is the private player board representation, completely independent of the
  * framework. The arena only ever exchanges single {@link spieler.Zug} objects with us; we
  * reconstruct and maintain the full position here so the search has something to work on.</p>
  *
@@ -30,7 +30,8 @@ class Board {
   static final int PASS = -1;
 
   /**
-   * The 8 directions as row/col deltas. Order is NW, N, NE, W, E, SW, S, SE (counterclockwise).
+   * The 8 directions as row/col deltas. Order is NW, N, NE, W, E, SW, S, SE (row-major / reading
+   * order).
    * Up-Left    DR: -1 ,  DC: -1
    * Up         DR: -1 ,  DC:  0
    * Up-Right   DR: -1 ,  DC:  1
@@ -53,7 +54,7 @@ class Board {
   /**
    * Creates a new board with the standard Othello starting position.
    */
-  public Board() {
+  Board() {
     reset();
   }
 
@@ -123,13 +124,6 @@ class Board {
   }
 
   /**
-   * Set {@code side} to move: BLACK or WHITE.
-   */
-  void setSideToMove(int side) {
-    this.sideToMove = side;
-  }
-
-  /**
    * Get the opponents color by determining {@code side} color.
    */
   int opponent(int side) {
@@ -148,7 +142,7 @@ class Board {
       return false;
     }
     int opp = opponent(side);
-    for (int d = 0; d < 8; d++) {
+    for (int d = 0; d < DR.length; d++) {
       int r = row + DR[d];
       int c = col + DC[d];
       boolean sawOpp = false;
@@ -215,7 +209,7 @@ class Board {
     }
     int opp = opponent(side);
     boardCells[idx(row, col)] = side;
-    for (int d = 0; d < 8; d++) {
+    for (int d = 0; d < DR.length; d++) {
       int r = row + DR[d];
       int c = col + DC[d];
       int n = 0;
@@ -266,6 +260,13 @@ class Board {
   }
 
   /**
+   * Number of empty squares remaining on the board.
+   */
+  int emptyCount() {
+    return NUMBER_CELLS - count(BLACK) - count(WHITE);
+  }
+
+  /**
    * Disc difference from {@code side}'s perspective (positive = ahead).
    */
   int discDiff(int side) {
@@ -284,8 +285,12 @@ class Board {
       sb.append(row).append(' ');
       for (int col = 0; col < SIZE; col++) {
         int v = boardCells[idx(row, col)];
-        char nonBlackChar = v == WHITE ? 'O' : '.';
-        sb.append(v == BLACK ? 'X' : nonBlackChar).append(' ');
+        char ch = switch (v) {
+          case BLACK -> 'X';
+          case WHITE -> 'O';
+          default -> '.';
+        };
+        sb.append(ch).append(' ');
       }
       sb.append('\n');
     }

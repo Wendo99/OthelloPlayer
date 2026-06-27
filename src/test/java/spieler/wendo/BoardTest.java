@@ -210,4 +210,26 @@ class BoardTest {
     assertEquals(0, m.count(Board.WHITE));
     assertEquals(Board.WHITE, m.getSideToMove());
   }
+
+  // ---------------------------------------------------------------------
+  // emptyCount: total cells minus stones of both colours
+  // ---------------------------------------------------------------------
+
+  @Test
+  void emptyCount_startAndFullBoard() {
+    // Start: 4 stones placed -> 60 empty.
+    assertEquals(60, b.emptyCount());
+
+    // A fully occupied board -> 0 empty.
+    Board full = TestBoards.of(Board.BLACK,
+        "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX"
+            + "XXXXXXXX");
+    assertEquals(0, full.emptyCount());
+  }
 }
