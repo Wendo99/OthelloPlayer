@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(//Users/Wendo99/Documents/60-modules/isy/01_Othello/**)",
-      "Bash(unzip -l OthelloWettkampf.jar)"
-    ]
-  }
-}

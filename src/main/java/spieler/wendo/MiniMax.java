@@ -3,6 +3,13 @@ package spieler.wendo;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * NegaScout search with iterative deepening and a time budget.
+ *
+ * <p><strong>Not thread-safe.</strong> A single instance keeps mutable per-search state
+ * ({@code deadlineNanos}, {@code nodeCount}); it must run one search at a time. Use a separate
+ * instance per thread if you ever parallelise.</p>
+ */
 class MiniMax {
 
   private static final int WIN = 1_000_000;   // sentinel scores
@@ -121,7 +128,9 @@ class MiniMax {
    * only how quickly NegaScout finds and proves it, which is what lets the search reach more plies.
    */
   private void orderMoves(List<int[]> moves) {
-    moves.sort((a, b) -> evaluator.squareValue(b[0], b[1]) - evaluator.squareValue(a[0], a[1]));
+    moves.sort((a, b) -> Integer.compare(
+        evaluator.squareValue(b[0], b[1]),   // b before a => descending (high squareValue first)
+        evaluator.squareValue(a[0], a[1])));
   }
 
   /**
@@ -192,9 +201,10 @@ class MiniMax {
    * pass searches the principal variation first — sharpening the pruning as we go.
    *
    * @param board        the current board state
-   * @param maxDepth     hard ceiling on plies (the search usually stops earlier, on time)
+   * @param maxDepth     hard ceiling on plies; expected >= 1 (a value <= 0 skips the search and
+   *                     returns the best statically-ordered legal move)
    * @param side         the side to move (BLACK or WHITE)
-   * @param timeBudgetMs how long this move may take, in milliseconds
+   * @param timeBudgetMs how long this move may take, in milliseconds (>= 0)
    * @return the best move as (row, col) pair, or an empty Optional if no legal move exists
    */
   Optional<int[]> bestMove(Board board, int maxDepth, int side, long timeBudgetMs) {
@@ -221,6 +231,7 @@ class MiniMax {
   /**
    * Searches one ply level over the given pre-ordered root moves and returns the argmax move.
    */
+  @SuppressWarnings("UnnecessaryLocalVariable")
   private int[] searchRoot(Board board, int depth, int side, List<int[]> moves) {
     int[] best = null;
     int alpha = LOSS;

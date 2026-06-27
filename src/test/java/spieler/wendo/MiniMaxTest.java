@@ -154,6 +154,24 @@ class MiniMaxTest {
     assertArrayEquals(new int[]{0, 2}, mm.bestMove(onlyOne, 64, Board.BLACK, 500).orElseThrow());
   }
 
+  @Test
+  void bestMove_worksForWhiteToMove() {
+    // Mirror of bestMove_returnsTheOnlyLegalMove, but WHITE to move: (0,0)=O, (0,1)=X,
+    // so WHITE's only bracket is at (0,2). Exercises the search for the non-default side.
+    Board onlyOne = TestBoards.of(Board.WHITE,
+        "OX......"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........"
+            + "........");
+
+    assertEquals(1, onlyOne.legalMoves(Board.WHITE).size());
+    assertArrayEquals(new int[]{0, 2}, mm.bestMove(onlyOne, 4, Board.WHITE).orElseThrow());
+  }
+
   // ---------------------------------------------------------------------
   // helper
   // ---------------------------------------------------------------------

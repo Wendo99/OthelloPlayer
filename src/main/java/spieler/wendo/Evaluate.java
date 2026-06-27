@@ -1,13 +1,9 @@
 package spieler.wendo;
 
-public class Evaluate {
+class Evaluate {
 
   /**
-   * Evaluates the given board position from the perspective of the given player.
-   *
-   * <p>Positive values are good for the player, negative values are bad. The exact scale is
-   * arbitrary, but it should be consistent across all positions so that the search can compare
-   * them.</p>
+   * Positional square weights, indexed row*SIZE+col: corners high, X-/C-squares strongly negative.
    */
   private static final int[] WEIGHTS = {
       120, -20, 20, 5, 5, 20, -20, 120,
@@ -20,31 +16,40 @@ public class Evaluate {
       120, -20, 20, 5, 5, 20, -20, 120
   };
 
+  private static final int ENDGAME_THRESHOLD = 50;
+  private static final int ENDGAME_DISC_WEIGHT = 100;
+  private static final int ENDGAME_CORNER_WEIGHT = 1000;
+  private static final int CORNER_WEIGHT = 25;
+  private static final int MOBILITY_WEIGHT = 5;
+  private static final int[][] CORNERS = {{0, 0}, {0, 7}, {7, 0}, {7, 7}};
+  private static final int SIZE = 8;
+
   /**
    * Antisymmetric heuristic: evaluate(b, side) == -evaluate(b, opponent(side)).
    * Positive = good for {@code side}.
    */
   int evaluate(Board b, int side) {
     int opp = b.opponent(side);
-    int discs = b.count(side) + b.count(opp);
+    int myCount = b.count(side);
+    int oppCount = b.count(opp);
+    int discs = myCount + oppCount;
 
-    int corner = cornerScore(b, side, opp);
-    int mobility = mobilityScore(b, side, opp);
-    int positional = positionalScore(b, side, opp);
-    int discDiff = b.discDiff(side);
-
-    if (discs >= 50) {                 // endgame: counting wins
-      return 100 * discDiff + 1000 * corner;
+    // endgame: counting
+    if (discs >= ENDGAME_THRESHOLD) {
+      int discDiff = myCount - oppCount;
+      return ENDGAME_DISC_WEIGHT * discDiff
+          + ENDGAME_CORNER_WEIGHT * cornerScore(b, side, opp);
     }
-    // midgame: ignore raw discs, weight position + mobility + corners
-    return 25 * corner + 5 * mobility + positional;
+
+    // early/midgame: position + mobility + corners; raw disc count ignored
+    return CORNER_WEIGHT * cornerScore(b, side, opp)
+        + MOBILITY_WEIGHT * mobilityScore(b, side, opp)
+        + positionalScore(b, side, opp);
   }
 
-  // each helper returns (side's value) - (opp's value)  -> antisymmetric
   int cornerScore(Board b, int side, int opp) {
-    int[][] corners = {{0, 0}, {0, 7}, {7, 0}, {7, 7}};
     int score = 0;
-    for (int[] c : corners) {
+    for (int[] c : CORNERS) {
       int cell = b.getBoardCell(c[0], c[1]);
       if (cell == side) {
         score++;
@@ -63,15 +68,14 @@ public class Evaluate {
       return 0;
     }
     return 100 * (myMoves - oppMoves) / total;
-
   }
 
   int positionalScore(Board b, int side, int opp) {
     int score = 0;
-    for (int row = 0; row < 8; row++) {
-      for (int col = 0; col < 8; col++) {
+    for (int row = 0; row < SIZE; row++) {
+      for (int col = 0; col < SIZE; col++) {
         int cell = b.getBoardCell(row, col);
-        int w = WEIGHTS[row * 8 + col];
+        int w = WEIGHTS[row * SIZE + col];
         if (cell == side) {
           score += w;
         } else if (cell == opp) {
@@ -88,6 +92,6 @@ public class Evaluate {
    * guess at how good a move to that square is likely to be.
    */
   int squareValue(int row, int col) {
-    return WEIGHTS[row * 8 + col];
+    return WEIGHTS[row * SIZE + col];
   }
 }
