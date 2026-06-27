@@ -54,9 +54,7 @@ public final class Spieler implements OthelloSpieler {
     long perMoveMs = timeManager.budgetForMove(used, empties);
     int maxDepth = Math.min(depth, empties); // can't look beyond the end of the game
 
-    int[] best = miniMax.bestMove(board, maxDepth, myColor, perMoveMs);
-
-    // 3. commit and report move
+    int[] best = miniMax.bestMove(board, maxDepth, myColor, perMoveMs).orElse(null);
     return finalizeMove(best);
   }
 

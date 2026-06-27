@@ -1,21 +1,37 @@
 package spieler.wendo;
 
 import java.util.List;
+import java.util.Optional;
 
-public class MiniMax {
+class MiniMax {
 
   private static final int WIN = 1_000_000;   // sentinel scores
   private static final int LOSS = -1_000_000;
+
+  /**
+   * Read the clock once every {@code TIME_CHECK_MASK + 1} nodes (power-of-two minus one).
+   */
+  private static final int TIME_CHECK_MASK = 1023;
+
   private final Evaluate evaluator;
 
-  /** Absolute wall-clock cutoff (ms) for the current search; {@link Long#MAX_VALUE} disables it. */
-  private long deadline = Long.MAX_VALUE;
+  /**
+   * Monotonic cutoff (from {@link System#nanoTime()}, in nanoseconds) for the current search;
+   * {@link Long#MAX_VALUE} disables it.
+   */
+  private long deadlineNanos = Long.MAX_VALUE;
+
+  /**
+   * Free-running node counter; the time check fires only when its low bits hit zero.
+   */
+  private int nodeCount;
 
   /**
    * Thrown to unwind the recursion when the time budget is exhausted. Stack trace is suppressed
    * because it is used purely as control flow, thrown at most once per search.
    */
   private static final class TimeUp extends RuntimeException {
+
     private TimeUp() {
       super(null, null, false, false);
     }
@@ -23,15 +39,8 @@ public class MiniMax {
 
   private static final TimeUp TIME_UP = new TimeUp();
 
-  public MiniMax(Evaluate evaluator) {
+  MiniMax(Evaluate evaluator) {
     this.evaluator = evaluator;
-  }
-
-  /**
-   *
-   */
-  private int evaluateScore(Board b, int side) {
-    return evaluator.evaluate(b, side);
   }
 
   /**
@@ -55,15 +64,17 @@ public class MiniMax {
    * @return score of {@code board} from the perspective of {@code side} to move.
    */
   private int negascout(Board board, int depth, int alpha, int beta, int side) {
-    // 0. Time guard: abandon this search if the budget is spent. The iterative-deepening
-    //    caller catches this and keeps the best move from the last fully completed depth.
-    if (System.currentTimeMillis() > deadline) {
+    // 0. Time guard: abandon this search if the budget is spent. Reading the clock at every node
+    //    (leaves included) would dominate the search, so we only check once every
+    //    TIME_CHECK_MASK+1 nodes. The iterative-deepening caller catches this and keeps the best
+    //    move from the last fully completed depth.
+    if ((++nodeCount & TIME_CHECK_MASK) == 0 && System.nanoTime() > deadlineNanos) {
       throw TIME_UP;
     }
 
     // 1. Stop conditions: Terminal / depth limit
     if (depth == 0 || board.isGameOver()) {
-      return evaluateScore(board, side);
+      return evaluator.evaluate(board, side);
     }
 
     int oppColor = board.opponent(side);
@@ -114,7 +125,8 @@ public class MiniMax {
   }
 
   /**
-   * Extracted helper to child search in {@code negascout}
+   * Scores one child with NegaScout: a full window for the principal-variation (first) move, and a
+   * null-window scout — re-searched on a fail-high — for the rest.
    */
   private int searchChild(Board child, int depth, int alpha, int beta, int opp, boolean first) {
     if (first) {
@@ -151,22 +163,26 @@ public class MiniMax {
 
   /**
    * Fixed-depth entry point: searches exactly {@code depth} plies with no time limit. Returns the
-   * best move as an {@code int[]{row, col}}, or null if there is no legal move (caller must pass).
+   * best move as an {@code int[]{row, col}}, or an empty Optional if there is no legal move (caller
+   * must pass).
+   *
+   * <p><strong>Test-only.</strong> Live play uses the time-bounded
+   * {@link #bestMove(Board, int, int, long)}; this overload exists so tests can assert a
+   * deterministic fixed-depth result. Do not wire it into {@code Spieler}.</p>
    *
    * @param board the current board state
    * @param depth how many plies to look ahead
    * @param side  the side to move (BLACK or WHITE)
-   * @return the best move as (row, col) pair, or null if no legal move exists
+   * @return the best move as (row, col) pair, or an empty Optional if no legal move exists
    */
-  int[] bestMove(Board board, int depth, int side) {
-    deadline = Long.MAX_VALUE; // no time limit on the fixed-depth search
-
+  Optional<int[]> bestMove(Board board, int depth, int side) {
+    deadlineNanos = Long.MAX_VALUE;
     List<int[]> moves = board.legalMoves(side);
     if (moves.isEmpty()) {
-      return null;
+      return Optional.empty();
     }
     orderMoves(moves);
-    return searchRoot(board, depth, side, moves);
+    return Optional.of(searchRoot(board, depth, side, moves));
   }
 
   /**
@@ -179,27 +195,27 @@ public class MiniMax {
    * @param maxDepth     hard ceiling on plies (the search usually stops earlier, on time)
    * @param side         the side to move (BLACK or WHITE)
    * @param timeBudgetMs how long this move may take, in milliseconds
-   * @return the best move as (row, col) pair, or null if no legal move exists
+   * @return the best move as (row, col) pair, or an empty Optional if no legal move exists
    */
-  int[] bestMove(Board board, int maxDepth, int side, long timeBudgetMs) {
-    deadline = System.currentTimeMillis() + timeBudgetMs;
+  Optional<int[]> bestMove(Board board, int maxDepth, int side, long timeBudgetMs) {
+    deadlineNanos = System.nanoTime() + timeBudgetMs * 1_000_000L;
 
     List<int[]> moves = board.legalMoves(side);
     if (moves.isEmpty()) {
-      return null;
+      return Optional.empty();
     }
     orderMoves(moves);
 
-    int[] best = moves.get(0); // fallback: a legal move even if depth 1 never finishes
+    int[] best = moves.getFirst(); // fallback: a legal move even if depth 1 never finishes
     for (int depth = 1; depth <= maxDepth; depth++) {
       try {
         best = searchRoot(board, depth, side, moves);
         moveToFront(moves, best); // PV-first ordering for the next, deeper pass
-      } catch (TimeUp e) {
+      } catch (TimeUp ignored) {
         break; // ran out of time mid-depth: discard it, keep the last completed depth's best
       }
     }
-    return best;
+    return Optional.of(best);
   }
 
   /**
@@ -231,7 +247,7 @@ public class MiniMax {
    */
   private void moveToFront(List<int[]> moves, int[] mv) {
     if (moves.remove(mv)) {
-      moves.add(0, mv);
+      moves.addFirst(mv);
     }
   }
 }

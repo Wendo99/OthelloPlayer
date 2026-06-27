@@ -1,12 +1,10 @@
 package spieler.wendo;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.util.List;
@@ -27,11 +25,11 @@ class MiniMaxTest {
   }
 
   // ---------------------------------------------------------------------
-  // No legal move -> null (the caller is expected to pass)
+  // No legal move -> empty Optional (the caller is expected to pass)
   // ---------------------------------------------------------------------
 
   @Test
-  void bestMove_returnsNullWhenNoLegalMove() {
+  void bestMove_returnsEmptyWhenNoLegalMove() {
     // A completely full board: no empty squares means no legal moves for either side.
     Board full = TestBoards.of(Board.BLACK,
         "XXXXXXXX"
@@ -43,7 +41,7 @@ class MiniMaxTest {
             + "XXXXXXXX"
             + "XXXXXXXX");
 
-    assertNull(mm.bestMove(full, 4, Board.BLACK));
+    assertTrue(mm.bestMove(full, 4, Board.BLACK).isEmpty());
   }
 
   // ---------------------------------------------------------------------
@@ -65,7 +63,7 @@ class MiniMaxTest {
             + "........");
 
     assertEquals(1, onlyOne.legalMoves(Board.BLACK).size()); // guard the premise
-    assertArrayEquals(new int[]{0, 2}, mm.bestMove(onlyOne, 4, Board.BLACK));
+    assertArrayEquals(new int[]{0, 2}, mm.bestMove(onlyOne, 4, Board.BLACK).orElseThrow());
   }
 
   // ---------------------------------------------------------------------
@@ -75,9 +73,8 @@ class MiniMaxTest {
   @Test
   void bestMove_alwaysReturnsALegalMove() {
     Board b = new Board(); // standard start, BLACK to move
-    int[] best = mm.bestMove(b, 4, Board.BLACK);
+    int[] best = mm.bestMove(b, 4, Board.BLACK).orElseThrow();
 
-    assertNotNull(best);
     assertTrue(isAmong(best, b.legalMoves(Board.BLACK)));
   }
 
@@ -104,9 +101,8 @@ class MiniMaxTest {
   @Test
   void bestMove_deepSearchCompletesWithLegalResult() {
     Board b = new Board();
-    int[] best = assertDoesNotThrow(() -> mm.bestMove(b, 6, Board.BLACK));
+    int[] best = assertDoesNotThrow(() -> mm.bestMove(b, 6, Board.BLACK)).orElseThrow();
 
-    assertNotNull(best);
     assertTrue(isAmong(best, b.legalMoves(Board.BLACK)));
   }
 
@@ -122,14 +118,13 @@ class MiniMaxTest {
     Board b = new Board();
 
     int[] best = assertTimeoutPreemptively(Duration.ofSeconds(5),
-        () -> mm.bestMove(b, 64, Board.BLACK, 200));
+        () -> mm.bestMove(b, 64, Board.BLACK, 200)).orElseThrow();
 
-    assertNotNull(best);
     assertTrue(isAmong(best, b.legalMoves(Board.BLACK)));
   }
 
   @Test
-  void bestMoveTimed_returnsNullWhenNoLegalMove() {
+  void bestMoveTimed_returnsEmptyWhenNoLegalMove() {
     Board full = TestBoards.of(Board.BLACK,
         "XXXXXXXX"
             + "XXXXXXXX"
@@ -140,7 +135,7 @@ class MiniMaxTest {
             + "XXXXXXXX"
             + "XXXXXXXX");
 
-    assertNull(mm.bestMove(full, 64, Board.BLACK, 200));
+    assertTrue(mm.bestMove(full, 64, Board.BLACK, 200).isEmpty());
   }
 
   @Test
@@ -156,7 +151,7 @@ class MiniMaxTest {
             + "........"
             + "........");
 
-    assertArrayEquals(new int[]{0, 2}, mm.bestMove(onlyOne, 64, Board.BLACK, 500));
+    assertArrayEquals(new int[]{0, 2}, mm.bestMove(onlyOne, 64, Board.BLACK, 500).orElseThrow());
   }
 
   // ---------------------------------------------------------------------
