@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>de.wendo</groupId>
-  <artifactId>othelloplayer</artifactId>
+  <artifactId>OthelloPlayer</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
@@ -16,12 +16,27 @@
     <junit.jupiter.version>5.10.0</junit.jupiter.version>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>project-local</id>
+      <url>file://${project.basedir}/repo</url>
+    </repository>
+  </repositories>
+
   <dependencies>
-    <!-- Local framework JAR providing rahmen.* and spieler.* types -->
+
     <dependency>
-      <groupId>de.isy</groupId>
-      <artifactId>othellowettkampf</artifactId>
+      <groupId>de.wendo</groupId>
+      <artifactId>OthelloWettkampf</artifactId>
       <version>1.0.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>de.wendo</groupId>
+      <artifactId>OthelloWettkampf</artifactId>
+      <version>1.0.0</version>
+      <classifier>javadoc</classifier>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Minimal test dependency: JUnit 5 -->
