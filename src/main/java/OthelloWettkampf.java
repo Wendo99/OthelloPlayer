@@ -16,8 +16,8 @@ public class OthelloWettkampf {
     List<String> spieler = new ArrayList<>();
 
     // Die Spieler
-    spieler.add("spieler.wendo.Spieler:30");  // Tiefe = Obergrenze; die Zeit begrenzt real
-    spieler.add("spieler.Rumpfspieler:6");  // Referenzgegner mit Zugtiefe 6
+    spieler.add("spieler.wendo.Spieler:100");  // Tiefe = Obergrenze; die Zeit begrenzt real
+    spieler.add("spieler.Rumpfspieler:7");  // Referenzgegner mit Zugtiefe 7
 
     String protokolldatei = "/Users/Wendo99/50-Apps-local/IntelliJ/OthelloPlayer/log/Othello.log";
 

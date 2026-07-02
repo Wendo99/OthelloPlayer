@@ -11,10 +11,12 @@ final class TimeManager {
    * Never spend less than this on a single move, even when the clock is nearly empty.
    */
   private static final long MIN_MOVE_MS = 50;
+
   /**
    * We make roughly half the moves left on the board; the opponent makes the rest.
    */
   private static final int MOVE_SHARE_DIVISOR = 2;
+
   /**
    * Keep a 10% reserve so a slightly-overrunning search never flags the clock.
    */

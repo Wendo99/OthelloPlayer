@@ -4,11 +4,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * NegaScout search with iterative deepening and a time budget.
+ * MiniMax search i.e. NegaScout search with iterative deepening and a time budget.
  *
  * <p><strong>Not thread-safe.</strong> A single instance keeps mutable per-search state
- * ({@code deadlineNanos}, {@code nodeCount}); it must run one search at a time. Use a separate
- * instance per thread if you ever parallelise.</p>
+ * ({@code deadlineNanos}, {@code nodeCount}); it must run one search at a time.</p>
  */
 class MiniMax {
 
@@ -37,31 +36,32 @@ class MiniMax {
    * Thrown to unwind the recursion when the time budget is exhausted. Stack trace is suppressed
    * because it is used purely as control flow, thrown at most once per search.
    */
-  private static final class TimeUp extends RuntimeException {
+  private static final class TimeUpException extends RuntimeException {
 
-    private TimeUp() {
+    private TimeUpException() {
       super(null, null, false, false);
     }
   }
 
-  private static final TimeUp TIME_UP = new TimeUp();
+  private static final TimeUpException TIME_UP = new TimeUpException();
 
   MiniMax(Evaluate evaluator) {
     this.evaluator = evaluator;
   }
 
   /**
-   * This is the brain. Given a board and how many plies to look ahead, it returns a score from the
-   * side-to-move's perspective. It does four things in order
-   * <p>
-   * 1. Stop conditions: if depth ran out or the game is over → evaluate the board and return.
-   * 2. Pass handling: if the side has no legal moves but the game isn't over → make a
-   * pass move and recurse with the other side.
-   * 3. Try every legal move: for each move, copy the board, play the move, recurse
-   * to score the result, keep the best.
-   * 4. The NegaScout twist: first move gets a full search; later moves get a cheap "is
+   * This is the core search method. Given a board and how many plies to look ahead, it returns a
+   * score from the side-to-move's perspective. It does four things in order
+   *
+   * <p>1. Stop conditions: if depth ran out or the game is over → evaluate the board and
+   * return.</p>
+   * <p>2. Pass handling: if the side has no legal moves but the game isn't over → make a
+   * pass move and recurse with the other side.</p>
+   * <p>3. Try every legal move: for each move, copy the board, play the move, recurse
+   * to score the result, keep the best.</p>
+   * <p>4. The NegaScout twist: first move gets a full search; later moves get a cheap "is
    * this even better than what I have?" probe, and only get a full re-search if the probe says
-   * yes.
+   * yes.</p>
    *
    * @param board the current board state
    * @param depth how many plies to look ahead (decrements on each recursive call)
@@ -221,7 +221,7 @@ class MiniMax {
       try {
         best = searchRoot(board, depth, side, moves);
         moveToFront(moves, best); // PV-first ordering for the next, deeper pass
-      } catch (TimeUp ignored) {
+      } catch (TimeUpException ignored) {
         break; // ran out of time mid-depth: discard it, keep the last completed depth's best
       }
     }

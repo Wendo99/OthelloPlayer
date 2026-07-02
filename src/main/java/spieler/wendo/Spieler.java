@@ -7,8 +7,8 @@ import spieler.ZugException;
 
 public final class Spieler implements OthelloSpieler {
 
-  private static final String NAME = "Wendo";
-  private static final int DEFAULT_DEPTH = 6;
+  private static final String NAME = "wendo";
+  private static final int DEFAULT_DEPTH = 100;
 
   private Board board;
   private int myColor;
@@ -123,7 +123,6 @@ public final class Spieler implements OthelloSpieler {
     return new Zug(best[0], best[1]);
   }
 
-
   /**
    * Helper for {@code neuesSpiel} that converts Farbe values to int.
    *
@@ -155,7 +154,7 @@ public final class Spieler implements OthelloSpieler {
   }
 
   /**
-   * Sets the maximum search depth the player aims for. Values below 1 are invalid and are
+   * Sets the maximum search depth for the player. Values below 1 are invalid and are
    * <em>ignored</em>: the previous depth is kept (initially {@link #DEFAULT_DEPTH}). This keeps the
    * player usable even when constructed with a bad depth from the arena config, instead of failing
    * instantiation.
@@ -168,4 +167,3 @@ public final class Spieler implements OthelloSpieler {
     }
   }
 }
-

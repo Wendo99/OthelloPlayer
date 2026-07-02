@@ -9,9 +9,9 @@ import java.util.List;
  *
  * <p>This is the private player board representation, completely independent of the
  * framework. The arena only ever exchanges single {@link spieler.Zug} objects with us; we
- * reconstruct and maintain the full position here so the search has something to work on.</p>
+ * reconstruct and maintain the full position here.</p>
  *
- * <p>Representation: a flat {@code int[64]} indexed as {@code row * 8 + col}.
+ * <p>Representation of the board: a flat {@code int[64]} indexed as {@code row * 8 + col}.
  * Row 0 / col 0 is the top-left corner, matching the framework's {@code Zug} coordinate
  * convention.</p>
  */
@@ -44,7 +44,7 @@ class Board {
   private static final int[] DR = {-1, -1, -1, 0, 0, 1, 1, 1};
   private static final int[] DC = {-1, 0, 1, -1, 1, -1, 0, 1};
 
-  private final int[] boardCells = new int[NUMBER_CELLS];
+  private final int[] boardCells;
 
   /**
    * Side to move: BLACK or WHITE.
@@ -55,6 +55,7 @@ class Board {
    * Creates a new board with the standard Othello starting position.
    */
   Board() {
+    boardCells = new int[NUMBER_CELLS];
     reset();
   }
 
@@ -62,6 +63,7 @@ class Board {
    * Creates a new board with the given cell values and side to move. Used for copy().
    */
   private Board(int[] cells, int sideToMove) {
+    boardCells = new int[NUMBER_CELLS];
     System.arraycopy(cells, 0, this.boardCells, 0, NUMBER_CELLS);
     this.sideToMove = sideToMove;
   }
@@ -101,11 +103,11 @@ class Board {
     return new Board(boardCells, sideToMove);
   }
 
-
   /**
    * Convert (row, col) to flat index.
    */
   private int idx(int row, int col) {
+    assert row >= 0 && row < SIZE && col >= 0 && col < SIZE : "out of range: " + row + "," + col;
     return row * SIZE + col;
   }
 
@@ -189,10 +191,6 @@ class Board {
     return true; // no legal moves found
   }
 
-  // ---------------------------------------------------------------------
-  // Applying moves
-  // ---------------------------------------------------------------------
-
   /**
    * Place a stone for {@code side} at (row, col), flip all bracketed opponent stones, and advance
    * the side to move. The move must be legal. Use {@code col == PASS} to pass.
@@ -241,8 +239,6 @@ class Board {
    * Game over when neither side has a legal move.
    */
   boolean isGameOver() {
-    // Game is over only when both sides have no legal moves.
-    // i.e. neither BLACK nor WHITE has a legal move available.
     return hasNoLegalMove(BLACK) && hasNoLegalMove(WHITE);
   }
 
@@ -264,13 +260,6 @@ class Board {
    */
   int emptyCount() {
     return NUMBER_CELLS - count(BLACK) - count(WHITE);
-  }
-
-  /**
-   * Disc difference from {@code side}'s perspective (positive = ahead).
-   */
-  int discDiff(int side) {
-    return count(side) - count(opponent(side));
   }
 
   /**
