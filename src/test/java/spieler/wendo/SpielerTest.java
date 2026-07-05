@@ -92,14 +92,14 @@ class SpielerTest {
 
   @Test
   void setDepth_ignoresNonPositiveValues() {
-    Spieler s = new Spieler(); // DEFAULT_DEPTH = 6
-    assertEquals(6, s.getDepth());
+    Spieler s = new Spieler(); // DEFAULT_DEPTH = 100
+    assertEquals(100, s.getDepth());
 
     s.setDepth(0);
-    assertEquals(6, s.getDepth()); // unchanged
+    assertEquals(100, s.getDepth()); // unchanged
 
     s.setDepth(-3);
-    assertEquals(6, s.getDepth()); // unchanged
+    assertEquals(100, s.getDepth()); // unchanged
 
     s.setDepth(4);
     assertEquals(4, s.getDepth()); // accepted
@@ -109,8 +109,8 @@ class SpielerTest {
   void constructor_fallsBackToDefaultDepthOnInvalidInput() {
     // new Spieler(0)/(-1) must not leave the object with depth 0 (which would disable
     // the search). The field defaults to DEFAULT_DEPTH and the invalid value is ignored.
-    assertEquals(6, new Spieler(0).getDepth());
-    assertEquals(6, new Spieler(-1).getDepth());
+    assertEquals(100, new Spieler(0).getDepth());
+    assertEquals(100, new Spieler(-1).getDepth());
   }
 
   // ---------------------------------------------------------------------
