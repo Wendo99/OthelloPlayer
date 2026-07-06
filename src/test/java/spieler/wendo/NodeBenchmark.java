@@ -14,7 +14,7 @@ final class NodeBenchmark {
   public static void main(String[] args) {
     MiniMax mm = new MiniMax(new Evaluate());
     bench(mm, "start      ", new Board());
-    bench(mm, "midgame(20)", advance(new Board(), 20));
+    bench(mm, "midgame(20)", advance(new Board()));
   }
 
   private static void bench(MiniMax mm, String label, Board b) {
@@ -39,8 +39,8 @@ final class NodeBenchmark {
    * skips any trailing forced pass, so the returned position is guaranteed to have moves to search
    * (unless the game is already over) — otherwise the benchmark would measure 0 nodes.
    */
-  private static Board advance(Board b, int plies) {
-    for (int i = 0; i < plies; i++) {
+  private static Board advance(Board b) {
+    for (int i = 0; i < 20; i++) {
       int side = b.getSideToMove();
       List<int[]> moves = b.legalMoves(side);
       if (moves.isEmpty()) {

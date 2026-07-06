@@ -19,6 +19,13 @@ class MiniMax {
    */
   private static final int TIME_CHECK_MASK = 1023;
 
+  private static final int MAX_PLY = 64;   // search depth never exceeds board empties (≤60)
+
+  /**
+   * Per depth, up to two moves (encoded row*8+col) that recently caused a beta cutoff; -1 = empty.
+   */
+  private final int[][] killers = new int[MAX_PLY][2];
+
   private final Evaluate evaluator;
 
   /**
@@ -47,6 +54,7 @@ class MiniMax {
 
   MiniMax(Evaluate evaluator) {
     this.evaluator = evaluator;
+    clearKillers();
   }
 
   /**
@@ -79,23 +87,21 @@ class MiniMax {
       throw TIME_UP;
     }
 
-    // 1. Stop conditions: Terminal / depth limit
-    if (depth == 0 || board.isGameOver()) {
+    if (depth == 0) {
       return evaluator.evaluate(board, side);
     }
 
     int oppColor = board.opponent(side);
     List<int[]> moves = board.legalMoves(side);
 
-    // 2. Pass handling: No move available, but game not over -> forced PASS (no depth cost,
-    //    swap side). Two passes in a row -> isGameOver() was already true.
     if (moves.isEmpty()) {
+      if (board.legalMoves(oppColor).isEmpty()) {
+        return evaluator.evaluate(board, side);
+      }
       return handlePass(board, depth, alpha, beta, side, oppColor);
     }
 
-    // Best-first ordering: try high-value squares (corners, edges) before bad ones
-    // (X-/C-squares). NegaScout only prunes well when the likely-best move comes first.
-    orderMoves(moves);
+    orderMoves(moves, depth);
 
     boolean first = true;
     int best = LOSS;
@@ -116,6 +122,7 @@ class MiniMax {
         alpha = best;
       }
       if (alpha >= beta) {
+        recordKiller(depth, mv);     // ← this move caused the cutoff
         break;            // beta cutoff
       }
     }
@@ -131,6 +138,29 @@ class MiniMax {
     moves.sort((a, b) -> Integer.compare(
         evaluator.squareValue(b[0], b[1]),   // b before a => descending (high squareValue first)
         evaluator.squareValue(a[0], a[1])));
+  }
+
+  /**
+   * Static ordering, then float this level's killer moves to the front.
+   */
+  private void orderMoves(List<int[]> moves, int depth) {
+    orderMoves(moves);                       // your existing static square-value sort
+    promoteKiller(moves, killers[depth][1]); // promote secondary first...
+    promoteKiller(moves, killers[depth][0]); // ...then primary, so it ends up at index 0
+  }
+
+  void promoteKiller(List<int[]> moves, int sq) {
+    if (sq < 0) {
+      return;                                // empty slot
+    }
+    for (int i = 0; i < moves.size(); i++) {
+      int[] mv = moves.get(i);
+      if (mv[0] * 8 + mv[1] == sq) {         // value match
+        moves.remove(i);
+        moves.addFirst(mv);
+        return;
+      }
+    }
   }
 
   /**
@@ -187,6 +217,7 @@ class MiniMax {
   Optional<int[]> bestMove(Board board, int depth, int side) {
     deadlineNanos = Long.MAX_VALUE;
     nodeCount = 0;
+    clearKillers();
 
     List<int[]> moves = board.legalMoves(side);
     if (moves.isEmpty()) {
@@ -212,6 +243,7 @@ class MiniMax {
   Optional<int[]> bestMove(Board board, int maxDepth, int side, long timeBudgetMs) {
     deadlineNanos = System.nanoTime() + timeBudgetMs * 1_000_000L;
     nodeCount = 0;
+    clearKillers();
 
     List<int[]> moves = board.legalMoves(side);
     if (moves.isEmpty()) {
@@ -263,6 +295,22 @@ class MiniMax {
     if (moves.remove(mv)) {
       moves.addFirst(mv);
     }
+  }
+
+  private void clearKillers() {
+    for (int[] slot : killers) {
+      slot[0] = -1;
+      slot[1] = -1;
+    }
+  }
+
+  private void recordKiller(int depth, int[] mv) {
+    int sq = mv[0] * 8 + mv[1];
+    if (killers[depth][0] == sq) {
+      return;                              // already the primary killer, nothing to do
+    }
+    killers[depth][1] = killers[depth][0]; // demote old primary to secondary
+    killers[depth][0] = sq;                // new primary
   }
 
   /**
