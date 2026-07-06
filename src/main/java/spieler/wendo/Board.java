@@ -137,7 +137,7 @@ class Board {
   // ---------------------------------------------------------------------
 
   /**
-   * True if {@code side} can legally place a stone at (row, col).
+   * True if {@code side} can legally place a stone at ({@code row}, {@code col}).
    */
   boolean isLegal(int row, int col, int side) {
     if (boardCells[idx(row, col)] != EMPTY) {
@@ -256,7 +256,8 @@ class Board {
   }
 
   /**
-   * Number of empty squares remaining on the board.
+   * Number of empty squares remaining on our board.
+   * At start there are 64 empty squares (64 - 4 starting ones).
    */
   int emptyCount() {
     return NUMBER_CELLS - count(BLACK) - count(WHITE);

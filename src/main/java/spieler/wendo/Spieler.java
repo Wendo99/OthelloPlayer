@@ -45,14 +45,11 @@ public final class Spieler implements OthelloSpieler {
    */
   @Override
   public Zug berechneZug(Zug vorherigerZug, long zeitWeiss, long zeitSchwarz) throws ZugException {
-    // 1. catch up on opponent's move
     replayOpponentMove(vorherigerZug);
-
-    // 2. think: iterative deepening, bounded by the time we can afford for this move.
     int empties = board.emptyCount();
     long used = (myColor == Board.BLACK) ? zeitSchwarz : zeitWeiss;
     long perMoveMs = timeManager.budgetForMove(used, empties);
-    int maxDepth = Math.min(depth, empties); // can't look beyond the end of the game
+    int maxDepth = Math.min(depth, empties);
 
     int[] best = miniMax.bestMove(board, maxDepth, myColor, perMoveMs).orElse(null);
     return finalizeMove(best);

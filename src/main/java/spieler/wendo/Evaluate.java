@@ -47,6 +47,10 @@ class Evaluate {
         + positionalScore(b, side, opp);
   }
 
+  /**
+   * Count corners owned by {@code side} minus corners owned by {@code opp}.
+   * {0,0},{0,7},{7,0},{7,7}
+   */
   int cornerScore(Board b, int side, int opp) {
     int score = 0;
     for (int[] c : CORNERS) {
@@ -88,8 +92,8 @@ class Evaluate {
 
   /**
    * Static desirability of a single square, taken from the positional weight table (corners high,
-   * X-/C-squares negative). Used by the search for move ordering — it is a cheap, side-independent
-   * guess at how good a move to that square is likely to be.
+   * X-/C-squares negative). Used by the search for move ordering. It is a guess at how good a move
+   * to that square is likely to be.
    */
   int squareValue(int row, int col) {
     return WEIGHTS[row * SIZE + col];

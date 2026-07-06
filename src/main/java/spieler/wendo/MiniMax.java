@@ -30,7 +30,7 @@ class MiniMax {
   /**
    * Free-running node counter; the time check fires only when its low bits hit zero.
    */
-  private int nodeCount;
+  private long nodeCount;
 
   /**
    * Thrown to unwind the recursion when the time budget is exhausted. Stack trace is suppressed
@@ -186,6 +186,8 @@ class MiniMax {
    */
   Optional<int[]> bestMove(Board board, int depth, int side) {
     deadlineNanos = Long.MAX_VALUE;
+    nodeCount = 0;
+
     List<int[]> moves = board.legalMoves(side);
     if (moves.isEmpty()) {
       return Optional.empty();
@@ -209,6 +211,7 @@ class MiniMax {
    */
   Optional<int[]> bestMove(Board board, int maxDepth, int side, long timeBudgetMs) {
     deadlineNanos = System.nanoTime() + timeBudgetMs * 1_000_000L;
+    nodeCount = 0;
 
     List<int[]> moves = board.legalMoves(side);
     if (moves.isEmpty()) {
@@ -222,7 +225,7 @@ class MiniMax {
         best = searchRoot(board, depth, side, moves);
         moveToFront(moves, best); // PV-first ordering for the next, deeper pass
       } catch (TimeUpException ignored) {
-        break; // ran out of time mid-depth: discard it, keep the last completed depth's best
+        break; // ran out of time mid-depth
       }
     }
     return Optional.of(best);
@@ -260,5 +263,12 @@ class MiniMax {
     if (moves.remove(mv)) {
       moves.addFirst(mv);
     }
+  }
+
+  /**
+   * Nodes visited by the most recent search — used by the benchmark to compare speed edits.
+   */
+  long getNodeCount() {
+    return nodeCount;
   }
 }
