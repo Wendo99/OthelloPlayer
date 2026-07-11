@@ -70,19 +70,22 @@
 
         {\small\begin{verbatim}
 negascout(brett, tiefe, alpha, beta, seite):
-if tiefe == 0 or spielEnde: return bewerte(brett, seite)
-zuege = sortiere(legaleZuege(seite))
-best = -inf; erster = true
-for zug in zuege:
-kind = brett.kopie(); kind.fuehreAus(zug, seite)
-if erster: score = -negascout(kind, tiefe-1, -beta, -alpha, gegner)
-else:
-score = -negascout(kind, tiefe-1, -alpha-1, -alpha, gegner)   # Scout-Probe
-if alpha < score < beta:
-score = -negascout(kind, tiefe-1, -beta, -score, gegner)    # Nachsuche
-best = max(best, score); alpha = max(alpha, best)
-if alpha >= beta: merkeKiller(tiefe, zug); break                 # Beta-Schnitt
-return best
+    if tiefe == 0 or spielEnde:
+        return bewerte(brett, seite)
+    zuege = sortiere(legaleZuege(seite))
+    best = -inf; erster = true
+    for zug in zuege:
+        kind = brett.kopie(); kind.fuehreAus(zug, seite)
+        if erster:
+            score = -negascout(kind, tiefe-1, -beta,     -alpha, gegner)
+        else:
+            score = -negascout(kind, tiefe-1, -alpha-1,  -alpha, gegner)  # Scout-Probe
+            if alpha < score < beta:
+                score = -negascout(kind, tiefe-1, -beta, -score, gegner)  # Nachsuche
+        best = max(best, score); alpha = max(alpha, best)
+        if alpha >= beta:
+            merkeKiller(tiefe, zug); break                                # Beta-Schnitt
+    return best
     \end{verbatim}}
 
     \paragraph{Zugsortierung.}
@@ -126,9 +129,12 @@ return best
 
 
     \section{Qualitätssicherung}
-    Die regel- und suchkritischen Klassen sind durch 48 JUnit-Tests abgesichert (u.\,a.\ Regeln,
-    Antisymmetrie der Bewertung, Such-Invarianten). Leistungsverbessernde Änderungen wurden
-    anhand exakter Knotenzahlen gemessen und nur übernommen, wenn sie nachweislich halfen, ohne
-    die Korrektheit (identisches Suchergebnis) zu verändern.
+    Die Lösung legt Wert auf Codequalität: klare Verantwortungstrennung (siehe Architektur),
+    durchgängige Javadoc-Dokumentation, sprechende Konstanten statt „magischer'' Zahlen sowie
+    defensive Prüfungen (z.\,B.\ Assertions für Feldindizes). Die regel- und suchkritischen Klassen
+    sind durch 48 JUnit-Tests abgesichert (u.\,a.\ Regeln, Antisymmetrie der Bewertung,
+    Such-Invarianten, Zeit-Abbruch). Leistungsverbessernde Änderungen wurden anhand exakter
+    Knotenzahlen gemessen und nur übernommen, wenn sie nachweislich halfen, ohne das Suchergebnis
+    zu verändern (die Zugsortierung ändert nur die Suchgeschwindigkeit, nie das Ergebnis).
 
 \end{document}
