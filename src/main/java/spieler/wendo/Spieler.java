@@ -6,7 +6,7 @@ import spieler.Zug;
 import spieler.ZugException;
 
 /**
- * Tournament Player of {@code spieler.wendo} : An adapter between the arena and the
+ * Tournament Player of Dominik Wendland : An adapter between the arena and the
  * internal search engine. Translates {@link Farbe}/{@link Zug} into the internal board
  * representation, maintains its own {@link Board}, and delegates move calculation to
  * {@link MiniMax} under time control by {@link TimeManager}.
