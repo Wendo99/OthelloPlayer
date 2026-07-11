@@ -7,9 +7,9 @@ import java.util.List;
 /**
  * Internal Othello game state and rules engine.
  *
- * <p>This is the private player board representation, completely independent of the
- * framework. The arena only ever exchanges single {@link spieler.Zug} objects with us; we
- * reconstruct and maintain the full position here.</p>
+ * <p>This is the player's private board representation, completely independent of the
+ * framework. The arena only ever exchanges single {@link spieler.Zug} objects; the full
+ * position is reconstructed and maintained here.</p>
  *
  * <p>Representation of the board: a flat {@code int[64]} indexed as {@code row * 8 + col}.
  * Row 0 / col 0 is the top-left corner, matching the framework's {@code Zug} coordinate
@@ -69,10 +69,10 @@ class Board {
   }
 
   /**
-   * Construct a board from a full position. {@code cells} must have length {@code NUMBER_CELLS},
+   * <p>Construct a board from a full position. {@code cells} must have length {@code NUMBER_CELLS},
    * each entry being {@link #EMPTY}, {@link #BLACK} or {@link #WHITE}, indexed {@code row*8+col}.
    * Narrow, whole-position factory (no per-cell mutation API is exposed); used to set up specific
-   * positions for tests and for reconstructing a position from move history.
+   * positions for tests and for reconstructing a position from move history.</p>
    */
   static Board fromCells(int[] cells, int sideToMove) {
     if (cells == null || cells.length != NUMBER_CELLS) {
@@ -97,36 +97,48 @@ class Board {
   }
 
   /**
-   * Allows the board to be used without altering the original
+   * Returns an independent copy of this board (same cell contents and side to move), so a candidate
+   * move can be explored on the copy without mutating the original. Used by the search (copy-make).
+   *
+   * @return a deep copy of this board
    */
   Board copy() {
     return new Board(boardCells, sideToMove);
   }
 
   /**
-   * Convert (row, col) to flat index.
+   * Converts a (row, col) coordinate to the flat array index {@code row * SIZE + col}.
    */
-  private int idx(int row, int col) {
+  private static int idx(int row, int col) {
     assert row >= 0 && row < SIZE && col >= 0 && col < SIZE : "out of range: " + row + "," + col;
     return row * SIZE + col;
   }
 
   /**
-   * Get the value of a certain cell defined by row and col: EMPTY, BLACK, or WHITE.
+   * Returns the contents of the cell at ({@code row}, {@code col}).
+   *
+   * @param row row index, 0..7 (0 = top)
+   * @param col column index, 0..7 (0 = left)
+   * @return {@link #EMPTY}, {@link #BLACK} or {@link #WHITE}
    */
   int getBoardCell(int row, int col) {
     return boardCells[idx(row, col)];
   }
 
   /**
-   * Get the side to move: BLACK or WHITE.
+   * Returns the side whose turn it is.
+   *
+   * @return {@link #BLACK} or {@link #WHITE}
    */
   int getSideToMove() {
     return sideToMove;
   }
 
   /**
-   * Get the opponents color by determining {@code side} color.
+   * Returns the opposing colour of {@code side}: {@link #WHITE} for {@link #BLACK} and vice versa.
+   *
+   * @param side {@link #BLACK} or {@link #WHITE}
+   * @return the opponent's colour
    */
   int opponent(int side) {
     return side == BLACK ? WHITE : BLACK;
@@ -137,7 +149,13 @@ class Board {
   // ---------------------------------------------------------------------
 
   /**
-   * True if {@code side} can legally place a stone at ({@code row}, {@code col}).
+   * Returns whether {@code side} may legally place a stone at ({@code row}, {@code col}), i.e. the
+   * cell is empty and the move brackets at least one line of opponent stones.
+   *
+   * @param row  row index, 0..7
+   * @param col  column index, 0..7
+   * @param side {@link #BLACK} or {@link #WHITE}
+   * @return {@code true} if the move is legal
    */
   boolean isLegal(int row, int col, int side) {
     if (boardCells[idx(row, col)] != EMPTY) {
@@ -162,7 +180,11 @@ class Board {
   }
 
   /**
-   * All legal moves for {@code side} as int[]{row, col}. Empty list means the side must pass.
+   * Returns all legal moves for {@code side}, each as an {@code int[]{row, col}}. An empty list
+   * means the side has no move and must pass.
+   *
+   * @param side {@link #BLACK} or {@link #WHITE}
+   * @return the list of legal moves (possibly empty)
    */
   List<int[]> legalMoves(int side) {
     List<int[]> moves = new ArrayList<>();
@@ -177,8 +199,10 @@ class Board {
   }
 
   /**
-   * Evaluates whether {@code side} has NO legal move available.
-   * This name matches call sites that check for the absence of moves.
+   * Returns {@code true} if {@code side} has no legal move. Short-circuits on the first move
+   * found,
+   * so it is cheaper than {@link #legalMoves(int)} for the game-over check in
+   * {@link #isGameOver()}.
    */
   private boolean hasNoLegalMove(int side) {
     for (int row = 0; row < SIZE; row++) {
@@ -192,10 +216,15 @@ class Board {
   }
 
   /**
-   * Place a stone for {@code side} at (row, col), flip all bracketed opponent stones, and advance
-   * the side to move. The move must be legal. Use {@code col == PASS} to pass.
+   * Places a stone for {@code side} at ({@code row}, {@code col}), flips all bracketed opponent
+   * stones, and advances the side to move. Pass a column of {@link #PASS} to pass (no stone is
+   * placed; only the side to move switches).
    *
-   * @return false if an illegal (non-pass) move was requested.
+   * @param row  row index, 0..7 (ignored for a pass)
+   * @param col  column index, 0..7, or {@link #PASS} to pass
+   * @param side {@link #BLACK} or {@link #WHITE}
+   * @return {@code true} if the move (or pass) was applied; {@code false} if an illegal, non-pass
+   * move was requested, in which case the board is left unchanged
    */
   boolean applyMove(int row, int col, int side) {
     if (col == PASS) {
@@ -236,14 +265,19 @@ class Board {
   // ---------------------------------------------------------------------
 
   /**
-   * Game over when neither side has a legal move.
+   * Returns whether the game is over, i.e. neither side has a legal move.
+   *
+   * @return {@code true} if no legal move exists for either side
    */
   boolean isGameOver() {
     return hasNoLegalMove(BLACK) && hasNoLegalMove(WHITE);
   }
 
   /**
-   * Number of stones on the board for {@code side}.
+   * Counts the stones of {@code side} currently on the board.
+   *
+   * @param side {@link #BLACK} or {@link #WHITE}
+   * @return the number of {@code side} stones
    */
   int count(int side) {
     int n = 0;
@@ -256,16 +290,20 @@ class Board {
   }
 
   /**
-   * Number of empty squares remaining on our board.
-   * At start there are 64 empty squares (64 - 4 starting ones).
+   * Number of empty squares remaining on the board. At the start position there are 60
+   * (the 64 cells minus the 4 initial stones).
+   *
+   * @return the number of empty cells
    */
   int emptyCount() {
     return NUMBER_CELLS - count(BLACK) - count(WHITE);
   }
 
   /**
-   * Returns a readable string representation of the board state, showing the grid and current side
-   * to move.
+   * Returns a readable multi-line representation of the board (grid plus the current side to move),
+   * intended for debugging and test output.
+   *
+   * @return a human-readable rendering of the position
    */
   @Override
   public String toString() {
