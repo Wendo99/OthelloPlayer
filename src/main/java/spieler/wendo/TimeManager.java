@@ -13,7 +13,7 @@ final class TimeManager {
   private static final long MIN_MOVE_MS = 50;
 
   /**
-   * We make roughly half the moves left on the board; the opponent makes the rest.
+   * The player makes roughly half the moves left on the board; the opponent makes the rest.
    */
   private static final int MOVE_SHARE_DIVISOR = 2;
 
@@ -24,12 +24,22 @@ final class TimeManager {
 
   private final long totalBudgetMs;
 
+  /**
+   * Creates a time manager for a single game.
+   *
+   * @param totalBudgetMs the total thinking time for the whole game (all moves together), in ms
+   */
   TimeManager(long totalBudgetMs) {
     this.totalBudgetMs = totalBudgetMs;
   }
 
   /**
-   * @param usedMs      time we have already spent this game, in ms
+   * Computes the time budget for the current move: the remaining time divided by the number of
+   * moves this player still expects to make (about half of the empty squares), reduced by a small
+   * reserve so a slightly-overrunning search does not flag the clock. The result is never below
+   * {@link #MIN_MOVE_MS}.
+   *
+   * @param usedMs      time the player has already spent this game, in ms
    * @param emptiesLeft empty squares remaining (a proxy for how many moves are left)
    * @return how long the current move may take, in ms (at least {@link #MIN_MOVE_MS})
    */
