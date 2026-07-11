@@ -5,6 +5,12 @@ import spieler.OthelloSpieler;
 import spieler.Zug;
 import spieler.ZugException;
 
+/**
+ * Tournament Player of {@code spieler.wendo} : An adapter between the arena and the
+ * internal search engine. Translates {@link Farbe}/{@link Zug} into the internal board
+ * representation, maintains its own {@link Board}, and delegates move calculation to
+ * {@link MiniMax} under time control by {@link TimeManager}.
+ */
 public final class Spieler implements OthelloSpieler {
 
   private static final String NAME = "wendo";
@@ -36,11 +42,11 @@ public final class Spieler implements OthelloSpieler {
    * vorherigerZug == null In zeitWeiss bzw. zeitSchwarz wird die bislang verbrauchte Zeit des
    * weissen bzw. schwarzen Spielers in ms angegeben.
    *
-   * @param vorherigerZug The opponent's move in the previous turn, or null if we are to move
-   *                      first.
+   * @param vorherigerZug The opponent's move in the previous turn, or null if this player is to
+   *                      move first.
    * @param zeitWeiss     The time taken by the white player so far, in milliseconds.
    * @param zeitSchwarz   The time taken by the black player so far, in milliseconds.
-   * @return The move our player now wants to make.
+   * @return The move this player wants to make.
    * @throws ZugException If it is not possible to calculate a move.
    */
   @Override
@@ -60,7 +66,8 @@ public final class Spieler implements OthelloSpieler {
    * Sie sich Ihre Farbe. Der Parameter bedenkzeitInSekunden gibt an, wie viel Bedenkzeit Ihrer
    * Maschine insgesamt zur Verfügung steht (für alle Züge zusammen).
    *
-   * @param meineFarbe           The color we are playing in this game (BLACK or WHITE).
+   * @param meineFarbe           The color this player is playing in this game (BLACK or
+   *                             WHITE).
    * @param bedenkzeitInSekunden The total thinking time for all moves in this game, in seconds.
    */
   @Override
@@ -72,16 +79,17 @@ public final class Spieler implements OthelloSpieler {
   }
 
   /**
-   * Helper for {@code berechneZug} that applies the opponent's previous move to our board, or
-   * throws on desync.
+   * Helper for {@code berechneZug} that applies the opponent's previous move to
+   * this player's board, or throws on desync.
    *
-   * @param vorherigerZug The opponent's previous move, or null if we are to move first.
-   * @throws ZugException If the opponent's move is illegal on our board.
+   * @param vorherigerZug The opponent's previous move, or null if this player is to
+   *                      move first.
+   * @throws ZugException If the opponent's move is illegal on this player's board.
    */
   private void replayOpponentMove(Zug vorherigerZug) throws ZugException {
     int oppColor = board.opponent(myColor);
 
-    if (vorherigerZug != null) { // if null, we are black and move first
+    if (vorherigerZug != null) {
       if (vorherigerZug.isPassen()) {
         if (!board.legalMoves(oppColor).isEmpty()) {
           throw new ZugException("Opponent passed but had a legal move: state desync.");
@@ -91,31 +99,31 @@ public final class Spieler implements OthelloSpieler {
         boolean isMoveValid = board.applyMove(vorherigerZug.getZeile(), vorherigerZug.getSpalte(),
             oppColor);
         if (!isMoveValid) {
-          throw new ZugException("Opponent move illegal on our board: state desync.");
+          throw new ZugException("Opponent move illegal on this player's board: state desync.");
         }
       }
     }
   }
 
   /**
-   * Applies our chosen move (or a pass when {@code best} is null) to our board and returns the
-   * corresponding Zug object.
+   * Applies this player's chosen move (or a pass when {@code best} is null) to
+   * this player's board and returns the corresponding Zug object.
    *
-   * @param best The best move as (row, col) pair, or null if we must pass.
+   * @param best The best move as (row, col) pair, or null if this player must pass.
    * @return The Zug object representing the move we just made.
    */
   private Zug finalizeMove(int[] best) throws ZugException {
-    boolean isMoveValid;
     if (best == null) {
-      isMoveValid = board.applyMove(0, Board.PASS, myColor);
-      if (!isMoveValid) {
-        throw new ZugException("We have no legal moves but failed to pass: state desync.");
+      boolean ok = board.applyMove(0, Board.PASS, myColor);
+      if (!ok) {
+        throw new ZugException(
+            "This player has no legal moves but failed to pass: state desync.");
       }
       return Zug.passenZug();
     }
-    isMoveValid = board.applyMove(best[0], best[1], myColor);
-    if (!isMoveValid) {
-      throw new ZugException("Chosen move illegal on our board: state desync.");
+    boolean ok = board.applyMove(best[0], best[1], myColor);
+    if (!ok) {
+      throw new ZugException("Chosen move illegal on this player's board: state desync.");
     }
     return new Zug(best[0], best[1]);
   }
@@ -123,11 +131,11 @@ public final class Spieler implements OthelloSpieler {
   /**
    * Helper for {@code neuesSpiel} that converts Farbe values to int.
    *
-   * @param f The color we are playing, as a Farbe enum value.
+   * @param f The color this player is playing, as a Farbe enum value.
    * @return The corresponding int value for the Board class.
    * @throws IllegalArgumentException If the color is not SCHWARZ or WEISS.
    */
-  private int toBoardSide(Farbe f) {
+  private static int toBoardSide(Farbe f) {
     return switch (f) {
       case SCHWARZ -> Board.BLACK;
       case WEISS -> Board.WHITE;
@@ -139,20 +147,25 @@ public final class Spieler implements OthelloSpieler {
   /**
    * Liefert den Namen Ihres Spielers zurück
    *
-   * @return Our player's name.
+   * @return this player's name.
    */
   @Override
   public String meinName() {
     return NAME;
   }
 
+  /**
+   * Get the player's search depth.
+   *
+   * @return the search depth
+   */
   int getDepth() {
     return depth;
   }
 
   /**
    * Sets the maximum search depth for the player. Values below 1 are invalid and are
-   * <em>ignored</em>: the previous depth is kept (initially {@link #DEFAULT_DEPTH}). This keeps the
+   * ignored. The previous depth is kept (initially {@link #DEFAULT_DEPTH}). This keeps the
    * player usable even when constructed with a bad depth from the arena config, instead of failing
    * instantiation.
    *
