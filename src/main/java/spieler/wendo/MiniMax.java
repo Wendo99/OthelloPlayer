@@ -11,7 +11,9 @@ import java.util.Optional;
  */
 class MiniMax {
 
-  /** Sentinel scores, larger in magnitude than any real evaluation (effectively +/- infinity). */
+  /**
+   * Sentinel scores, larger in magnitude than any real evaluation (effectively +/- infinity).
+   */
   private static final int WIN = 1_000_000;
   private static final int LOSS = -1_000_000;
 
@@ -20,10 +22,14 @@ class MiniMax {
    */
   private static final int TIME_CHECK_MASK = 1023;
 
-  /** Board width; a move (row, col) is encoded as {@code row * BOARD_SIZE + col}. */
+  /**
+   * Board width; a move (row, col) is encoded as {@code row * BOARD_SIZE + col}.
+   */
   private static final int BOARD_SIZE = 8;
 
-  /** Size of the killer table; the search depth never exceeds the board's empty cells (&le; 60). */
+  /**
+   * Size of the killer table; the search depth never exceeds the board's empty cells (&le; 60).
+   */
   private static final int MAX_PLY = 64;
 
   /**
@@ -168,7 +174,7 @@ class MiniMax {
       int[] mv = moves.get(i);
       if (encode(mv) == sq) {              // value match
         moves.remove(i);
-        moves.addFirst(mv);
+        moves.add(0, mv);
         return;
       }
     }
@@ -261,7 +267,7 @@ class MiniMax {
     }
     orderMoves(moves);
 
-    int[] best = moves.getFirst(); // fallback: a legal move even if depth 1 never finishes
+    int[] best = moves.get(0); // fallback: a legal move even if depth 1 never finishes
     for (int depth = 1; depth <= maxDepth; depth++) {
       try {
         best = searchRoot(board, depth, side, moves);
@@ -310,11 +316,13 @@ class MiniMax {
    */
   private void moveToFront(List<int[]> moves, int[] mv) {
     if (moves.remove(mv)) {
-      moves.addFirst(mv);
+      moves.add(0, mv);
     }
   }
 
-  /** Resets the killer table to "empty" ({@code -1}); called at the start of each search. */
+  /**
+   * Resets the killer table to "empty" ({@code -1}); called at the start of each search.
+   */
   private void clearKillers() {
     for (int[] slot : killers) {
       slot[0] = -1;
@@ -323,7 +331,8 @@ class MiniMax {
   }
 
   /**
-   * Records {@code mv} as a killer at {@code depth} (a move that just caused a beta cutoff) so it is
+   * Records {@code mv} as a killer at {@code depth} (a move that just caused a beta cutoff) so it
+   * is
    * tried first at sibling nodes. Keeps the two most recent distinct killers per depth.
    */
   private void recordKiller(int depth, int[] mv) {
@@ -336,7 +345,9 @@ class MiniMax {
     killers[depth][0] = sq;                // new primary
   }
 
-  /** Encodes a move as a single int {@code row * BOARD_SIZE + col} for compact killer storage. */
+  /**
+   * Encodes a move as a single int {@code row * BOARD_SIZE + col} for compact killer storage.
+   */
   private static int encode(int[] mv) {
     return mv[0] * BOARD_SIZE + mv[1];
   }
