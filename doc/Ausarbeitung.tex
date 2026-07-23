@@ -1,140 +1,170 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[11pt,a4paper, top=1cm]{article}
+\usepackage[a4paper,left= 2cm, right= 2cm, top= 1.5cm, bottom= 1cm, includefoot]{geometry}
 
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[ngerman]{babel}
 \usepackage{amsmath}
-\usepackage[a4paper,margin=2.1cm]{geometry}
 \usepackage{enumitem}
 \usepackage{parskip}
-\usepackage{titlesec} \titleformat{\section}{\normalfont\large\bfseries}{\thesection}{1em}{} \titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{1em}{} \titlespacing{\section}{0pt}{1.5ex plus .2ex}{1ex}
+\usepackage{titlesec} \titleformat{\section}{\normalfont\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{1em}{}
+\titlespacing{\section}{0pt}{1.5ex plus .2ex}{1ex}
 \setlist{nosep,leftmargin=1.4em}
+\usepackage[unicode,hidelinks]{hyperref}
+\hypersetup{
+    pdftitle={Othello-Spieler – Kurzbeschreibung der Lösung},
+    pdfauthor={Dominik Wendland},
+    pdfsubject={Ausarbeitung},
+    pdfkeywords={Othello, Minimax, NegaScout},
+    pdflang={de}
+}
 
-\title{\vspace{-2.2em}Othello-Spieler \\\vspace{0.2cm} \large Kurzbeschreibung der Lösung \vspace{0.75cm}\\ \large Modul: Intelligente Systeme \\}
-\author{Dominik Wendland (\texttt{spieler.wendo})}
-\date{\today}
+\title{\vspace{-2.4em}Othello-Spieler – Kurzbeschreibung der Lösung\\
+\vspace{0.2cm} \large Modul: Intelligente Systeme
+\\\vspace{0.2cm} \small Betreuer: Prof. Dr. J. Priemer\\
+\author{\large Dominik Wendland (\texttt{spieler.wendo})}\\
+\date{\today}}
 
 \begin{document}
-    \maketitle
-    \vspace{-3.2em}
+\maketitle
+\vspace{-2em}
+
+\section{Überblick}
+Der Spieler implementiert die vorgegebene Schnittstelle \texttt{OthelloSpieler}.
+Die Zugberechnung erfolgt mit Hilfe eines Spielbaums durch eine
+\textit{Minimax-Suche}\footnote{S. J. Russell und P. Norvig, Künstliche Intelligenz: ein moderner Ansatz, 4. Aktualisierte Auflage, Pearson, 2023.},
+die in der \textit{Negamax}-Formulierung umgesetzt ist.
+Das \textit{Alpha-Beta-Pruning} ist dabei als
+\textit{NegaScout}\footnote{A. Reinefeld, Spielbaum-Suchverfahren, Bd. 200. in Informatik-Fachberichte, Springer Berlin Heidelberg, 1989} realisiert.
+Als \textit{iterative Tiefensuche} unter Zeitkontrolle vertieft sich die Suche
+schrittweise (Tiefe $1, 2, 3, \dots$), bis das Zeitbudget des Zuges erschöpft ist,
+und liefert den besten Zug der letzten vollständig durchsuchten Tiefe.
+Zur effizienten Beschneidung des Spielbaums werden die Züge an jedem Knoten heuristisch
+sortiert -- an
+jedem inneren Knoten nach statischer Feldbewertung und \textit{Killerzügen}, ergänzt um die
+Prinzipalvariante aus der iterativen Tiefensuche.
+Die Positionsbewertung ist phasenabhängig und gewichtet im Mittel- und Endspiel
+unterschiedliche Merkmale.
+Die folgenden Abschnitte gehen auf die einzelnen Aspekte der Lösung ein.
 
 
-    \section{Überblick}
-    Der Spieler implementiert die vorgegebene Schnittstelle \texttt{OthelloSpieler}. Die
-    Zugberechnung erfolgt durch eine Alpha-Beta-Suche in der NegaScout-Variante
-    über einen Spielbaum, kombiniert mit iterativer Tiefensuche unter Zeitkontrolle.
-    Die Stellungsbewertung ist eine handgewichtete Heuristik, die je nach Spielphase
-    unterschiedliche Kriterien betont.
+\section{Architektur}
+Der Code ist nach dem Single-Responsibility-Prinzip modular in fünf Klassen mit
+folgenden Aufgaben gegliedert:
+\begin{itemize}
+\item \texttt{Spieler} -- Adapter zur Wettkampf-Umgebung, übersetzt \texttt{Farbe} und
+\texttt{Zug} in die interne Darstellung und zurück, pflegt das eigene Spielbrett und
+behandelt Sonderfälle (Passen, ungültiger Gegnerzug $\to$ \texttt{ZugException}).
+\item \texttt{Board} -- Spielregeln und Spielstand (Zuggenerierung, Ausführen inkl.
+Umdrehen, Endstellungserkennung).
+\item \texttt{MiniMax} -- Suchverfahren (NegaScout, Zugsortierung, iterative Tiefensuche,
+Zeitabbruch).
+\item \texttt{Evaluate} -- Positionsbewertung.
+\item \texttt{TimeManager} -- Aufteilung der Gesamtbedenkzeit auf die einzelnen Züge.
+\end{itemize}
 
 
-    \section{Architektur}
-    Der Code ist nach dem Prinzip der Trennung der Zuständigkeiten (Single Responsibility)
-    in fünf Klassen gegliedert. Nur \texttt{Spieler} kennt die Framework-Typen; \texttt{Board},
-    \texttt{MiniMax}, \texttt{Evaluate} und \texttt{TimeManager} sind vollständig
-    framework-unabhängig und dadurch isoliert testbar.
-    \begin{itemize}
-        \item \texttt{Spieler} -- Adapter zur Wettkampf-Umgebung: übersetzt \texttt{Farbe} und
-        \texttt{Zug} in die interne Darstellung und zurück, pflegt das eigene Spielbrett
-        und behandelt Sonderfälle (Passen, ungültiger Gegnerzug $\to$ \texttt{ZugException}).
-        \item \texttt{Board} -- Spielregeln und Spielstand (Zuggenerierung, Ausführen inkl.
-        Umdrehen, Endstellungserkennung).
-        \item \texttt{MiniMax} -- Suchverfahren (NegaScout, Zugsortierung, iterative Tiefensuche,
-        Zeitabbruch).
-        \item \texttt{Evaluate} -- Stellungsbewertung.
-        \item \texttt{TimeManager} -- Aufteilung der Gesamtbedenkzeit auf die einzelnen Züge.
-    \end{itemize}
+\section{Brettdarstellung}
+Das $8\times8$-Brett ist ein flaches \texttt{int}-Array der Länge~64 und
+zeilenweise mit $\text{Index}=\text{Zeile}\cdot 8+\text{Spalte}$ indiziert
+(Zeile~0, Spalte~0 ist das Feld oben links).
+Jede Zelle trägt einen der Werte \texttt{EMPTY}, \texttt{BLACK} oder \texttt{WHITE} und
+bildet so die Framework-Farben \texttt{Farbe.SCHWARZ} und \texttt{Farbe.WEISS} ab.
+Die Suche folgt dem \textit{copy-make}-Prinzip.
+Für jeden zu prüfenden Zug wird über \texttt{copy()} eine Kopie des Boards angelegt
+und der Zug nur auf dieser Kopie ausgeführt, sodass die Ausgangsstellung unberührt bleibt.
+Eine solche Kopie ist ein Array aus 64 Werten und wird als Ganzes per
+\texttt{System.arraycopy} dupliziert.
+Da die Alpha-Beta-Suche je Zug sehr viele Knoten expandiert und an jedem Knoten eine Kopie
+erzeugt, muss das Duplizieren einer Stellung billig sein, was ein flaches Primitiv-Array leistet.
 
 
-    \section{Brettdarstellung}
-    Das $8\times8$-Brett wird als flaches \texttt{int}-Array der Länge~64 gespeichert
-    (Index $=\text{Zeile}\cdot 8 + \text{Spalte}$; Werte \textsc{leer}/\textsc{schwarz}/\textsc{weiss}).
-    Diese Darstellung ist speichereffizient und lässt sich billig kopieren, was für die Suche
-    entscheidend ist: Die Suche arbeitet nach dem Prinzip \emph{copy-make}, d.\,h.\ für jeden
-    Zug wird eine unabhängige Kopie erzeugt, auf der der Zug ausgeführt wird -- die
-    Ausgangsstellung bleibt unverändert. Das vermeidet fehleranfällige „Rückgängig"-Logik.
+\section{Zugberechnung}
+Bei jedem Aufruf von \texttt{berechneZug} wird zunächst der letzte Zug des Gegners auf dem
+eigenen Brett synchronisiert (\texttt{replayOpponentMove()}), anschließend
+über \texttt{TimeManager} das Zeitbudget für diesen Zug bestimmt und die Suche gestartet.
+
+\paragraph{Suchverfahren (NegaScout).}
+Die Suche ist als Negamax formuliert.
+Beide Spieler maximieren aus eigener Sicht, und bei
+jedem Halbzug wird das Vorzeichen der Kindbewertung negiert.
+Darauf setzt NegaScout auf.
+Der laut Zugsortierung vielversprechendste Zug wird mit vollem Suchfenster untersucht, jeder
+weitere zunächst nur mit einem Nullfenster als billige Probe „ist dieser Zug überhaupt
+besser?“.
+Erst wenn die Probe dies andeutet (\textit{fail high}), wird der Zug mit vollem
+Fenster nachgesucht.
+Bei guter Zugsortierung expandiert NegaScout dadurch deutlich weniger
+Knoten als einfaches Alpha-Beta, denn die meisten Geschwisterzüge werden schon vom billigen
+Nullfenster widerlegt und nur die wenigen tatsächlich besseren Züge kosten eine volle
+Nachsuche.
+
+\paragraph{Zugsortierung.}
+Alpha-Beta bzw.\ NegaScout beschneiden den Spielbaum nur dann effizient, wenn der beste Zug
+zuerst untersucht wird.
+An jedem inneren Knoten wird die Zugreihenfolge daher heuristisch bestimmt:
+\begin{itemize}
+\item \textbf{Statische Feldbewertung} -- Vorsortierung nach einer festen Gewichtstabelle
+(Ecken sehr hoch, ecknahe „X“/„C“-Felder negativ).
+\item \textbf{Killerzüge} -- pro Suchtiefe werden bis zu zwei Züge gemerkt, die
+zuletzt einen Beta-Schnitt ausgelöst haben, und an Geschwisterknoten zuerst probiert.
+Ein Zug, der einen Geschwisterknoten widerlegt, widerlegt häufig auch die übrigen.
+Auf einer festen Stellung mit exakter Knotenzählung (\texttt{NodeBenchmark}) senkte diese
+Maßnahme die Knotenzahl im Mittelspiel bei Tiefe~10 um
+rund 37\,\% ($2{,}27$ auf $1{,}43$ Mio.).
+\end{itemize}
+Über die Iterationen hinweg tritt an der Wurzel die Prinzipalvariante hinzu: Der
+beste Zug der vorherigen, flacheren Suche wird in der nächsten Iteration zuerst probiert.
+
+\paragraph{Iterative Tiefensuche und Zeitmanagement.}
+Statt sofort mit fester Tiefe zu suchen, wird nacheinander mit Tiefe $1,2,3,\dots$ gesucht.
+Das hat zwei Vorteile: Es liegt jederzeit ein vollständiges Ergebnis vor (wichtig für die
+Zeitkontrolle), und jede flachere Iteration verbessert die Zugsortierung der nächsten.
+\texttt{TimeManager} weist jedem Zug ein Budget aus der verbleibenden Bedenkzeit geteilt
+durch die geschätzte Restzugzahl (etwa die Hälfte der freien Felder) zu, vermindert um eine
+Sicherheitsreserve von 10\,\%. Läuft das Budget während einer Iteration ab, bricht die Suche
+über eine \texttt{TimeUpException} sofort ab und liefert den besten Zug der letzten
+vollständig abgeschlossenen Tiefe. Die Tiefe ist dabei nur eine Obergrenze, real begrenzt die
+Zeit. Im Endspiel mit wenigen freien Feldern wird die Partie faktisch bis zum Ende
+ausgerechnet.
 
 
-    \section{Zugberechnung}
-    Bei jedem Aufruf von \texttt{berechneZug} wird zunächst der letzte Gegnerzug auf dem
-    eigenen Brett nachgespielt (Synchronisation), anschließend das Zeitbudget für diesen Zug
-    bestimmt und die Suche gestartet.
-
-    \paragraph{Suchverfahren (NegaScout).}
-    Die Suche ist als \emph{Negamax} formuliert: Beide Spieler maximieren aus ihrer eigenen
-    Sicht, und bei jedem Halbzug wird das Vorzeichen der Kindbewertung negiert. Auf dieser Basis
-    verwendet der Spieler NegaScout (Prinzipalvariantensuche): Der erste -- durch die
-    Zugsortierung vielversprechendste -- Zug wird mit vollem Suchfenster untersucht, alle
-    weiteren nur mit einem \emph{Null-Fenster} als billige „Ist dieser Zug überhaupt besser?"-Probe.
-    Nur wenn diese Probe fehlschlägt, wird der Zug voll nachgesucht. Dadurch werden bei guter
-    Zugsortierung deutlich weniger Knoten expandiert als bei einfacher Alpha-Beta-Suche.
-
-        {\small\begin{verbatim}
-negascout(brett, tiefe, alpha, beta, seite):
-    if tiefe == 0 or spielEnde:
-        return bewerte(brett, seite)
-    zuege = sortiere(legaleZuege(seite))
-    best = -inf; erster = true
-    for zug in zuege:
-        kind = brett.kopie(); kind.fuehreAus(zug, seite)
-        if erster:
-            score = -negascout(kind, tiefe-1, -beta,     -alpha, gegner)
-        else:
-            score = -negascout(kind, tiefe-1, -alpha-1,  -alpha, gegner)  # Scout-Probe
-            if alpha < score < beta:
-                score = -negascout(kind, tiefe-1, -beta, -score, gegner)  # Nachsuche
-        best = max(best, score); alpha = max(alpha, best)
-        if alpha >= beta:
-            merkeKiller(tiefe, zug); break                                # Beta-Schnitt
-    return best
-    \end{verbatim}}
-
-    \paragraph{Zugsortierung.}
-    Da Alpha-Beta bzw.\ NegaScout nur dann effizient beschneiden, wenn der beste Zug zuerst
-    untersucht wird, werden die Züge an jedem Knoten heuristisch sortiert:
-    \begin{itemize}
-        \item Statische Feldbewertung -- Sortierung nach einer festen Gewichtstabelle
-        (Ecken sehr hoch, ecknahe „X''/„C''-Felder negativ).
-        \item Prinzipalvariante -- über die iterative Tiefensuche wird der beste Zug der
-        vorherigen (flacheren) Suche in der nächsten Iteration zuerst probiert.
-        \item Killer-Heuristik -- pro Suchtiefe werden bis zu zwei Züge gemerkt, die
-        zuletzt einen Beta-Schnitt ausgelöst haben, und an Geschwisterknoten bevorzugt
-        probiert. Diese Maßnahme reduzierte die Knotenzahl messbar um ca.\ 37\,\%.
-    \end{itemize}
-
-    \paragraph{Iterative Tiefensuche und Zeitmanagement.}
-    Statt sofort mit fester Tiefe zu suchen, wird nacheinander mit Tiefe $1,2,3,\dots$ gesucht.
-    Das hat zwei Vorteile: Es liegt jederzeit ein vollständiges Ergebnis vor (wichtig für die
-    Zeitkontrolle), und jede flachere Iteration verbessert die Zugsortierung der nächsten. Für
-    jeden Zug berechnet \texttt{TimeManager} ein Budget aus der \emph{verbleibenden} Bedenkzeit
-    geteilt durch die \emph{geschätzte Restzugzahl} (mit Sicherheitsreserve). Läuft das Budget
-    während einer Iteration ab, wird die Suche über eine leichtgewichtige Ausnahme sofort
-    abgebrochen; zurückgegeben wird der beste Zug der letzten \emph{vollständig} abgeschlossenen
-    Tiefe. Die Tiefe ist dabei nur eine Obergrenze -- real begrenzt die Zeit; im Endspiel mit
-    wenigen freien Feldern wird die Partie faktisch bis zum Ende ausgerechnet.
+\section{Positionsbewertung}
+Die Bewertungsfunktion \texttt{evaluate()} liefert einen Wert aus Sicht der ziehenden
+Seite und ist antisymmetrisch
+($\text{bewerte}(b,\text{seite}) = -\text{bewerte}(b,\text{gegner})$), was die
+Negamax-Formulierung der Suche voraussetzt.
+Sie ist phasenabhängig und wechselt bei 50 Steinen auf dem Brett von einer heuristischen
+Mischung zu einer zählenden Bewertung.
+\begin{itemize}
+\item \textbf{Mittelspiel} (unter 50 Steinen): gewichtete Summe aus \textit{Eckenkontrolle},
+\textit{Mobilität} (normierte Differenz der Zugmöglichkeiten) und \textit{Positionswert} (Feldtabelle).
+Die Ecken tragen das größte Gewicht, denn
+ein besetzter Eckstein kann nie wieder umgedreht werden und ist damit dauerhaft sicher.
+Die reine Steinzahl bleibt bewusst unberücksichtigt, weil ein früher Steinvorsprung in
+Othello meist nachteilig ist, da er die eigene Mobilität einengt und dem Gegner
+Möglichkeiten zum Umdrehen liefert.
+\item \textbf{Endspiel} (ab 50 Steinen): Die Mischung wird durch die \textit{Steindifferenz}
+ersetzt, weiterhin mit starker Gewichtung der Ecken. Nun entscheidet die endgültige
+Steinzahl über Sieg oder Niederlage, sodass Mobilität und Feldtabelle ihren Vorhersagewert
+verlieren und stattdessen direkt gezählt wird.
+\end{itemize}
 
 
-    \section{Stellungsbewertung}
-    Die Bewertungsfunktion liefert einen Wert aus Sicht der ziehenden Seite und ist
-    \emph{antisymmetrisch} ($\text{bewerte}(b,\text{seite}) = -\text{bewerte}(b,\text{gegner})$),
-    was für die Negamax-Formulierung notwendig ist. Sie ist phasenabhängig:
-    \begin{itemize}
-        \item Mittelspiel: gewichtete Summe aus \emph{Eckenkontrolle}, \emph{Mobilität}
-        (Differenz der Zugmöglichkeiten, normiert) und \emph{Positionswert} (statische
-        Feldtabelle). Die reine Steinzahl wird bewusst ignoriert -- ein früher Steinvorsprung
-        ist in Othello meist nachteilig.
-        \item Endspiel (ab ca.\ 50 Steinen): Übergang zur \emph{Steindifferenz} mit starker
-        Gewichtung der Ecken, da nun die endgültige Steinzahl über Sieg oder Niederlage
-        entscheidet.
-    \end{itemize}
-
-
-    \section{Qualitätssicherung}
-    Die Lösung legt Wert auf Codequalität: klare Verantwortungstrennung (siehe Architektur),
-    durchgängige Javadoc-Dokumentation, sprechende Konstanten statt „magischer'' Zahlen sowie
-    defensive Prüfungen (z.\,B.\ Assertions für Feldindizes). Die regel- und suchkritischen Klassen
-    sind durch 48 JUnit-Tests abgesichert (u.\,a.\ Regeln, Antisymmetrie der Bewertung,
-    Such-Invarianten, Zeit-Abbruch). Leistungsverbessernde Änderungen wurden anhand exakter
-    Knotenzahlen gemessen und nur übernommen, wenn sie nachweislich halfen, ohne das Suchergebnis
-    zu verändern (die Zugsortierung ändert nur die Suchgeschwindigkeit, nie das Ergebnis).
+\section{Fazit}
+Der Spieler verbindet eine NegaScout-Suche mit iterativer Tiefensuche, dreistufiger
+Zugsortierung und einer phasenabhängigen Bewertung.
+Leistungsänderungen wurden an exakten Knotenzahlen
+überprüft und nur bei nachgewiesenem Nutzen übernommen, das Verhalten ist durch
+48 JUnit-Tests abgesichert.
+Im Wettbewerb belegte der Spieler dennoch nur den vierten Platz -- weniger, als die
+Optimierung der Suche erwarten ließ.
+Die folgende Einordnung ist eine Hypothese, keine Diagnose.
+Die Suchoptimierung gewann über die Geschwindigkeit zwar mehr Tiefe, doch dürfte die von
+Hand gewichtete Bewertung nicht ausreichend abgestimmt gewesen sein.
+Die vielversprechendsten Hebel wären entsprechend beispielsweise eine sorgfältiger abgestimmte
+oder gelernte Bewertung und ein früher exakt gelöstes Endspiel.
+Welcher davon tatsächlich entscheidet, könnte erst eine Analyse der Turnierpartien zeigen.
 
 \end{document}
