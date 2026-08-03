@@ -10,7 +10,6 @@
 
   <Loggers>
     <Root level="INFO">
-<!--      <AppenderRef ref="CONSOLE"/>-->
       <AppenderRef ref="FILE"/>
     </Root>
   </Loggers>
