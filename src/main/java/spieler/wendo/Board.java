@@ -61,6 +61,9 @@ class Board {
 
   /**
    * Creates a new board with the given cell values and side to move. Used for copy().
+   *
+   * @param cells      the cell contents to copy, indexed {@code row*8+col}
+   * @param sideToMove the side to move, {@link #BLACK} or {@link #WHITE}
    */
   private Board(int[] cells, int sideToMove) {
     boardCells = new int[NUMBER_CELLS];
@@ -73,6 +76,13 @@ class Board {
    * each entry being {@link #EMPTY}, {@link #BLACK} or {@link #WHITE}, indexed {@code row*8+col}.
    * Narrow, whole-position factory (no per-cell mutation API is exposed); used to set up specific
    * positions for tests and for reconstructing a position from move history.</p>
+   *
+   * @param cells      the full position, length {@link #NUMBER_CELLS}, indexed {@code row*8+col}
+   * @param sideToMove the side to move, {@link #BLACK} or {@link #WHITE}
+   * @return a new board holding a copy of {@code cells}
+   * @throws IllegalArgumentException if {@code cells} is null or has the wrong length, or if
+   *                                  {@code sideToMove} is neither {@link #BLACK} nor
+   *                                  {@link #WHITE}
    */
   static Board fromCells(int[] cells, int sideToMove) {
     if (cells == null || cells.length != NUMBER_CELLS) {
@@ -108,6 +118,10 @@ class Board {
 
   /**
    * Converts a (row, col) coordinate to the flat array index {@code row * SIZE + col}.
+   *
+   * @param row row index, 0..7 (0 = top)
+   * @param col column index, 0..7 (0 = left)
+   * @return the index into {@link #boardCells}
    */
   private static int idx(int row, int col) {
     assert row >= 0 && row < SIZE && col >= 0 && col < SIZE : "out of range: " + row + "," + col;
@@ -203,6 +217,9 @@ class Board {
    * found,
    * so it is cheaper than {@link #legalMoves(int)} for the game-over check in
    * {@link #isGameOver()}.
+   *
+   * @param side the side to check, {@link #BLACK} or {@link #WHITE}
+   * @return {@code true} if {@code side} has no legal move
    */
   private boolean hasNoLegalMove(int side) {
     for (int row = 0; row < SIZE; row++) {
