@@ -194,6 +194,22 @@ class Board {
   }
 
   /**
+   * Counts the legal moves without object allocation.
+   * Essential for the performance of the evaluation function in the hand nodes.
+   */
+  int countLegalMoves(int side) {
+    int count = 0;
+    for (int row = 0; row < SIZE; row++) {
+      for (int col = 0; col < SIZE; col++) {
+        if (isLegal(row, col, side)) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  /**
    * Returns all legal moves for {@code side}, each as an {@code int[]{row, col}}. An empty list
    * means the side has no move and must pass.
    *

@@ -108,14 +108,15 @@ final class Evaluate {
    * @return the normalized mobility advantage of {@code side}
    */
   int mobilityScore(Board b, int side, int opp) {
-    int myMoves = b.legalMoves(side).size();
-    int oppMoves = b.legalMoves(opp).size();
+    int myMoves = b.countLegalMoves(side);
+    int oppMoves = b.countLegalMoves(opp);
     int total = myMoves + oppMoves;
     if (total == 0) {
       return 0;
     }
     return MOBILITY_SCALE * (myMoves - oppMoves) / total;
   }
+
 
   /**
    * Positional score: the sum of {@link #WEIGHTS} over {@code side}'s stones minus the sum over
