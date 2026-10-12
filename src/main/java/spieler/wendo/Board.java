@@ -140,6 +140,13 @@ class Board {
   }
 
   /**
+   * Enables flat access for high-performance loops (e.g., evaluation).
+   */
+  int getBoardCellFlat(int index) {
+    return boardCells[index];
+  }
+
+  /**
    * Returns the side whose turn it is.
    *
    * @return {@link #BLACK} or {@link #WHITE}
