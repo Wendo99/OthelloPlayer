@@ -35,7 +35,7 @@ final class NodeBenchmark {
 
   /**
    * Deterministically walk the game forward by playing the middle legal move each ply (the middle
-   * move avoids the degenerate top-left clustering that "always first" produces). Afterwards it
+   * move avoids the degenerate top-left clustering that "always first" produces). Afterward it
    * skips any trailing forced pass, so the returned position is guaranteed to have moves to search
    * (unless the game is already over) — otherwise the benchmark would measure 0 nodes.
    */
