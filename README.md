@@ -1,109 +1,112 @@
 # OthelloPlayer
 
 A tournament Othello (Reversi) engine written in Java for the *OthelloWettkampf* arena, a
-university competition framework in which student-written players play each other on an 8×8 board
-under a fixed total thinking time.
+university competition framework, provided by the course professor, in which student-written players compete on an 8×8 board
+under a fixed total thinking time of 120 seconds.
 
-The player itself is `spieler.wendo.Spieler`. It implements the framework's `OthelloSpieler`
-interface. The arena hands it the opponent's last move and the clocks, and it answers with its own
-move.
+The engine maintains its own board representation independent of the framework. On each turn,
+it runs a time-bounded NegaScout search and returns the best move it managed to prove before the
+clock runs out.
 
-## What it does
+## Results and reflection
 
-The engine keeps its own board and rules implementation, independent of the framework. The arena
-only ever exchanges single moves, so the full position is reconstructed and maintained internally.
-On each turn it runs a time-bounded search and returns the best move it managed to prove.
+**Tournament Outcome:**
+The engine was built for the university's *Intelligente Systeme* Othello tournament, where it
+finished in **4th place**.
 
-| Class | Role                                                                                                                                       |
-| --- |--------------------------------------------------------------------------------------------------------------------------------------------|
-| [`Spieler`](src/main/java/spieler/wendo/Spieler.java) | Adapter between arena and engine: translates `Farbe`/`Zug`, replays the opponent's move, delegates the search, detects state desync        |
-| [`Board`](src/main/java/spieler/wendo/Board.java) | Game state and rules: a flat `int[64]` indexed `row * 8 + col`, with legal-move generation, flipping, passes and copying                   |
-| [`MiniMax`](src/main/java/spieler/wendo/MiniMax.java) | NegaScout (alpha-beta variant) with iterative deepening, killer-move heuristic and static move ordering                                    |
-| [`Evaluate`](src/main/java/spieler/wendo/Evaluate.java) | Phase-aware static evaluation: corners, mobility and a positional weight table in the midgame; disc difference plus corners in the endgame |
-| [`TimeManager`](src/main/java/spieler/wendo/TimeManager.java) | Splits the game clock into a per-move budget (remaining time ÷ expected own moves left, minus a 10 % reserve)                              |
+The following assessment is a hypothesis, not a diagnosis as this would require the tournament games
+statistics. Search
+optimization did indeed provide more depth at the expense of speed, but the manually weighted
+evaluation likely was not sufficiently fine-tuned. The most promising levers would be,
+for example, a more carefully calibrated or learned evaluation and an endgame solved precisely
+at an early stage. Only an analysis of the tournament games, these are not available, could reveal
+which of these factors is actually decisive.
 
-Search notes worth knowing:
+**Technical Benchmarks:**
+Running on a modern JVM (Java 21), the engine achieves a stable throughput of **600 – 800 kNPS**
+(kilo-nodes per second). Using killer moves alone reduced the midgame node count at depth 10 by
+roughly **37%** (from 2.27M down to 1.43M nodes).
 
-- Iterative deepening searches depth 1, 2, 3, … and keeps the best move from the last depth
-  that completed. Running out of time mid-depth is normal and safe — the previous result stands.
-- Time is the real limit, not depth. The configured depth is only an upper bound; the player is
-  usually configured with depth 100 so that only the clock stops it.
-- The maximum depth is additionally capped at the number of empty squares, so an endgame search can
-  become exact.
-- A pass does not consume a ply, it only swaps the side to move.
+## Architecture and components
 
-## Requirements
+The arena only exchanges single moves. The full position, ruleset, and search tree are
+reconstructed and maintained internally following the Single-Responsibility Principle:
 
-- JDK 21 (the build targets release 21)
+| Component                                                     | Role                                                                                                                                               |
+|:--------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`Spieler`](src/main/java/spieler/wendo/Spieler.java)         | **Adapter:** Translates framework `Zug` objects, replays opponent moves, delegates searches, and detects state desyncs.                            |
+| [`Board`](src/main/java/spieler/wendo/Board.java)             | **State & Rules:** Encapsulates rule logic, legal-move generation, flipping, and state checks.                                                     |
+| [`MiniMax`](src/main/java/spieler/wendo/MiniMax.java)         | **Search:** NegaScout (alpha-beta variant) with iterative deepening, a killer-move heuristic, and static move ordering.                            |
+| [`Evaluate`](src/main/java/spieler/wendo/Evaluate.java)       | **Heuristics:** Phase-aware static evaluation. Midgame prioritizes corners, mobility, and positional weights; endgame targets raw disc difference. |
+| [`TimeManager`](src/main/java/spieler/wendo/TimeManager.java) | **Clock:** Splits the game clock dynamically (remaining time ÷ expected own moves left) and holds a 10 % safety reserve per move.                  |
+|
+
+## Board representation and copy-make
+
+The 8×8 board is represented as a flat `int[64]` array indexed via `row * 8 + col` (with row 0, col
+0 at the top left).
+
+The search relies on the **copy-make pattern**: for every candidate move, `copy()` creates an
+independent board instance via `System.arraycopy`, keeping the original state untouched. Using a
+primitive flat array ensures that these millions of allocations remain extremely cheap on the JVM.
+
+## Search and evaluation strategy
+
+- **NegaScout & Iterative Deepening:** Formulated in Negamax. The first move of the ordered list is
+  searched with a full window; subsequent moves are tested with a cheap null-window probe (scout),
+  triggering a full re-search only upon a fail-high. Iterative deepening (depth 1, 2, 3, …) ensures
+  a valid move is always ready when the clock expires.
+- **Three-Tier Move Ordering:** To maximize alpha-beta pruning efficiency, moves are ordered via:
+    1. Static square weights (corners highly rewarded, X/C-squares heavily penalized).
+    2. Killer moves (storing up to two beta-cutoff-triggering moves per depth).
+    3. Principal variation (re-evaluating the best move from the previous iterative pass first).
+- **Phase-Aware Evaluation:**
+    - *Midgame (< 50 discs):* Blends corner control, normalized mobility, and positional weights.
+      Raw disc count is deliberately ignored because early stone advantages restrict mobility.
+    - *Endgame ($\ge$ 50 discs):* Switches to disc difference while keeping corner weights high.
+
+## Setup, build, test, and run
+
+**Requirements:**
+
+- JDK 21
 - Maven 3.9+
 
-The arena framework is not on Maven Central. It ships with this repository as a pre-installed
-artifact in [`repo/`](repo/), which `pom.xml` declares as a file-based repository. No manual
-install step is needed.
+The arena framework is pre-installed in [`repo/`](repo/) as a file-based Maven repository. No manual
+installation is needed.
 
-## Build and test
+**Build and test:**
 
 ```bash
 mvn test
-```
-
-```bash
 mvn package
 ```
 
-The test suite (JUnit 5) covers the rules engine, the evaluation function, search behaviour, the
-time manager and the framework adapter contract.
-
-## Running a match
-
-[`OthelloWettkampf`](src/main/java/OthelloWettkampf.java) is the entry point. It builds a player
-list, hands it to `rahmen.OthelloArena` and the match starts:
-
-```java
-List<String> spieler = new ArrayList<>();
-spieler.add("spieler.wendo.Spieler:100");   // this engine, depth cap 100
-spieler.add("spieler.Rumpfspieler:7");      // reference opponent shipped with the framework
-
-new OthelloArena(150, spieler, protokolldatei, true);
-```
-
-Each entry is `fully.qualified.ClassName:depth`. The first `OthelloArena` argument is the total
-thinking time per player in seconds, the third is the log file path, and the fourth enables debug
-output.
-
-Run it with:
+The JUnit 5 test suite covers the rules engine, phase evaluation, search invariants, time
+management, and the framework adapter contract.
+Running a match:
+OthelloWettkampf runs a local test match. By default, it pits this engine against a shipped
+reference opponent (Rumpfspieler) at depth 7.
 
 ```bash
 mvn -q exec:java
+
 ```
 
-The match protocol is written to `log/Othello.log` relative to the working directory, the directory
-is created if it does not exist.
+The match protocol, provided by the Framework, is written to log/Othello.log relative to the working directory.
 
-Alternatively, run `OthelloWettkampf` directly from the IDE, or from the packaged jar together with
-the framework jar on the classpath.
+## Limitations
+
+The board is represented as an array (`int[64]`) rather than 64-bit Bitboards. Move generation
+relies on array traversal and a copy-make approach rather than bitwise shifts and make-undo.
 
 ## Provenance and licensing
 
-The code I wrote is everything under [`src/main/java/spieler/wendo/`](src/main/java/spieler/wendo/)
-and [`src/test/java/spieler/wendo/`](src/test/java/spieler/wendo/). That
-code is covered by the MIT [`LICENSE`](LICENSE) in this repository.
+The code I wrote is located under src/main/java/spieler/wendo/ and src/test/java/spieler/wendo/. It
+is covered by the MIT LICENSE in this repository.
+Two parts are university course material and are not covered by that license:
 
-Two parts are course material, not my work, and not covered by that license:
-
-- [`src/main/java/OthelloWettkampf.java`](src/main/java/OthelloWettkampf.java): a template
-  provided with the course to run local test matches. My only changes are the player list and the
-  log-file path handling; see the class Javadoc.
-- [`repo/de/wendo/OthelloWettkampf/1.0.0/`](repo/de/wendo/OthelloWettkampf/1.0.0/): the arena
-  framework (`rahmen` and `spieler` packages), vendored here only so the project builds.
-
-Rights to both remain with the author of the course material. The competition between all
-participants' players was run separately on the course's own framework. The harness here was purely
-a local development tool.
-
-## Benchmarking
-
-[`NodeBenchmark`](src/test/java/spieler/wendo/NodeBenchmark.java) measures nodes searched at fixed
-depth from the opening and from a deterministic midgame position. It is deterministic, so the node
-counts of two code versions are directly comparable. This is useful when judging whether a change to move
-ordering or evaluation actually helps.
+- `src/main/java/OthelloWettkampf.java`: A provided template to run local test matches.
+- `repo/de/wendo/OthelloWettkampf/1.0.0/`: The proprietary arena framework (rahmen and spieler
+  packages), vendored here solely for the build process.
+  Rights to both remain with the author of the course material.
