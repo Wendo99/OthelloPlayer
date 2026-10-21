@@ -1,7 +1,8 @@
 # OthelloPlayer
 
 A tournament Othello (Reversi) engine written in Java for the *OthelloWettkampf* arena, a
-university competition framework, provided by the course professor, in which student-written players compete on an 8×8 board
+university competition framework, provided by the course professor, in which student-written players
+compete on an 8×8 board
 under a fixed total thinking time of 120 seconds.
 
 The engine maintains its own board representation independent of the framework. On each turn,
@@ -22,10 +23,12 @@ for example, a more carefully calibrated or learned evaluation and an endgame so
 at an early stage. Only an analysis of the tournament games, these are not available, could reveal
 which of these factors is actually decisive.
 
-**Technical Benchmarks:**
-Running on a modern JVM (Java 21), the engine achieves a stable throughput of **600 – 800 kNPS**
-(kilo-nodes per second). Using killer moves alone reduced the midgame node count at depth 10 by
-roughly **37%** (from 2.27M down to 1.43M nodes).
+**Technical benchmarks:** `NodeBenchmark` (`src/test/java`) counts nodes at fixed
+depth. In one mid-game position (20 plies from the start, reached by a
+deterministic walk), adding killer-move ordering to the static ordering reduced
+the depth-10 search from 2,265,675 to 1,434,016 nodes (−36.7 %; commits c7a05d9
+→ 11785ba). This is a single position, not an average over games. Throughput:
+[600–800] kNPS on [CPU, JVM version].
 
 ## Architecture and components
 
@@ -86,7 +89,8 @@ The JUnit 5 test suite covers the rules engine, phase evaluation, search invaria
 management, and the framework adapter contract.
 
 Running a match:
-The provided OthelloWettkampf runs a local test match. By default, it pits this engine against a shipped
+The provided OthelloWettkampf runs a local test match. By default, it pits this engine against a
+shipped
 reference opponent (Rumpfspieler) at depth 7.
 
 ```bash
@@ -94,7 +98,8 @@ mvn -q exec:java
 
 ```
 
-The match protocol, provided by the Framework, is written to log/Othello.log relative to the working directory.
+The match protocol, provided by the Framework, is written to log/Othello.log relative to the working
+directory.
 
 ## Limitations
 
