@@ -110,4 +110,4 @@ Two bundled components are university course material and not covered by that MI
 - [`src/main/java/OthelloWettkampf.java`](src/main/java/OthelloWettkampf.java) — a provided local-test driver, with minor project-specific changes.
 - [`repo/de/wendo/OthelloWettkampf/1.0.0/`](repo/de/wendo/OthelloWettkampf/1.0.0/) — the course's proprietary arena framework artifact and accompanying repository files.
 
-  Redistribution permission has not been established by this README.
+Redistribution permission has not been established by this README.
